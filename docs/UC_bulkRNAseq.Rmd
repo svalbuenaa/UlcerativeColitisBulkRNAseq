@@ -1,0 +1,227 @@
+---
+title: "UC_bulkRNAseq"
+output: html_document
+date: "`r Sys.Date()`"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(comment = NA)
+```
+
+```{css}
+pre {
+    border: none !important;
+    background-color: transparent !important;
+    padding: 0 !important;
+    margin: 0 !important;
+}
+```
+
+
+```{r message=FALSE, warning=FALSE}
+if (!require("ggplot2")) install.packages("ggplot2")
+if (!require("stringr")) install.packages("stringr")
+if (!require("ggrepel")) install.packages("ggrepel")
+if (!require("dplyr")) install.packages("dplyr")
+
+library(ggplot2)
+library(stringr)
+library(ggrepel)
+library(dplyr)
+```
+
+```{r}
+if(file.exists(file.path("Z:", "My Drive", "Bioinformatics project bulk-RNAseq"))){
+  project_dir <- file.path("Z:", "My Drive", "Bioinformatics project bulk-RNAseq")
+}else if(file.exists(file.path("Z:", "Mi unidad", "Bioinformatics project bulk-RNAseq"))){
+  project_dir <- file.path("Z:", "Mi unidad", "Bioinformatics project bulk-RNAseq")
+}
+
+genes_list <- read.delim(file.path(project_dir, "GSE107593_raw_reads_BCHRNAseq.txt"), check.names=F)
+```
+
+```{r}
+head(genes_list[,1:6])
+```
+
+### Obtain metadata information
+```{r}
+# Read GSE107593_series_matrix.txt
+metadata_matrix <- read.delim(file.path(project_dir, "Dataset copy, untouched", "GSE107593_series_matrix.txt"), check.names=F, skip = 25)
+metadata_matrix_2 <- data.frame(t(metadata_matrix[,2:ncol(metadata_matrix)]))
+colnames(metadata_matrix_2) <- metadata_matrix[,1]
+
+# Obtain patient ids
+patient_ids <- unique(str_replace(metadata_matrix_2[,12], "subject: ",""))
+
+cat(patient_ids)
+```
+
+
+```{r}
+# Prepare data for PCA
+genes_list_for_pca <- t(genes_list[,c(10:ncol(genes_list))])
+colnames(genes_list_for_pca) <- genes_list[,3]
+
+# PCA
+pca <- prcomp(genes_list_for_pca, scale=F)
+
+# Screeplot
+pca_metrics <- as.data.frame(t(summary(pca)$importance))
+colnames(pca_metrics) <- c("Standard_deviation", "Proportion_of_Variance", "Cumulative_Proportion")
+pca_metrics$PCs <- as.numeric(substr(rownames(pca_metrics), 3, length(rownames(pca_metrics))))
+
+ggplot(data = pca_metrics[1:10,], aes(x=PCs, y=Proportion_of_Variance)) +
+  geom_line(color="blue") +
+  geom_point() +
+  scale_x_continuous(breaks = c(1:10)) +
+  labs(title="PCA - Variance explained per principal component")
+```
+
+```{r}
+# Create dataframe to contain relevant metadata in appropriate format
+df_samples_treatments <- data.frame(row.names = rownames(metadata_matrix_2))
+
+# Get sample name and inflammation status
+df_samples_treatments$sample_inflamation <- ""
+for (row in (1:nrow(metadata_matrix_2))){
+  df_samples_treatments[row, ncol(df_samples_treatments)] <- str_split(
+    rownames(df_samples_treatments)[row],
+    "Ulcerative colitis Colon Biopsy ",
+    simplify = T)[2]}
+
+# Get sample name
+df_samples_treatments$sample <- ""
+for (row in (1:nrow(df_samples_treatments))){
+  df_samples_treatments[row, ncol(df_samples_treatments)] <- gsub(" [^ ]*$", "", df_samples_treatments[row, ncol(df_samples_treatments)-1])
+}
+
+# Get inflammation status
+df_samples_treatments$treatment <- ""
+for (row in (1:nrow(df_samples_treatments))){
+  df_samples_treatments[row, ncol(df_samples_treatments)] <- gsub(".* ", "", df_samples_treatments[row, ncol(df_samples_treatments)-2])
+}
+
+
+# Create dataframe out of the pca scores
+pca_scores <- data.frame(pca$x)[1:10]
+
+# Get the patient id in the pca scores dataframe
+pca_scores$patient <- ""
+
+for (row in (1:nrow(pca_scores))){
+  for (id_patient in 1:length(patient_ids)){
+    if(!is.na(str_extract(rownames(pca_scores[row,]), patient_ids[id_patient]))){
+      pca_scores[row, ncol(pca_scores)] <- str_extract(rownames(pca_scores[row,]), patient_ids[id_patient])
+    }
+  }
+}
+
+# Get the sample id in the PCA scores dataframe
+pca_scores$sample <- rownames(pca_scores)
+
+# Get the inflammation status of each sample
+pca_scores$inflammation <- ""
+for(row_scores in 1:nrow(pca_scores)){
+  for(row_df in 1:nrow(df_samples_treatments)){
+    if(pca_scores[row_scores, ncol(pca_scores)-1] == df_samples_treatments[row_df, 2]){
+      pca_scores[row_scores, ncol(pca_scores)] <- df_samples_treatments[row_df, 3]
+    }
+  }
+}
+
+ggplot(pca_scores, aes(x=PC1, y=PC2, colour = inflammation)) +
+  geom_point()
+```
+
+**Data for this PCA was not normalized before PCA nor scaled in PCA. Problems due to different amount of total counts in different samples?**
+```{r}
+min(colSums(genes_list[10:ncol(genes_list)]))
+max(colSums(genes_list[10:ncol(genes_list)]))
+```
+
+## Lognormalization of counts:
+```{r}
+# Create df for normalization:
+genes_list_lognorm <- data.frame(matrix(NA, nrow = nrow(genes_list), ncol = ncol(genes_list)))
+
+# Columns before counts
+for (col in 1:9){
+  genes_list_lognorm[[col]] <- genes_list[[col]]
+}
+
+# Column names
+colnames(genes_list_lognorm) <- colnames(genes_list)
+
+for (i in 10:ncol(genes_list)) {
+  genes_list_lognorm[, i] <- log2((genes_list[, i] / colSums(genes_list[i]) * 1000000)+8)
+}
+```
+
+## PCA of lognorm samples
+```{r}
+# Create dataframe for PCA of lognormalized samples
+genes_list_lognorm_for_pca <- t(genes_list_lognorm[,10:ncol(genes_list_lognorm)])
+colnames(genes_list_lognorm_for_pca) <- rownames(genes_list_lognorm)
+
+# PCA of lognorm counts
+pca_lognorm <- prcomp(genes_list_lognorm_for_pca)
+
+# Screeplot
+pca_lognorm_metrics <- as.data.frame(t(summary(pca_lognorm)$importance))
+colnames(pca_lognorm_metrics) <- c("Standard_deviation", "Proportion_of_Variance", "Cumulative_Proportion")
+pca_lognorm_metrics$PCs <- as.numeric(substr(rownames(pca_lognorm_metrics), 3, length(rownames(pca_lognorm_metrics))))
+
+ggplot(data = pca_lognorm_metrics[1:10,], aes(x=PCs, y=Proportion_of_Variance)) +
+  geom_line(color="blue") +
+  geom_point() +
+  scale_x_continuous(breaks = c(1:10)) +
+  labs(title="PCA of lognormalized counts- Variance explained per principal component")
+```
+
+```{r, fig.width=14}
+# Create pca scores dataframe for lognormalized counts pca
+pca_scores_lognorm <- data.frame(pca_lognorm$x[,1:10])
+pca_scores_lognorm$patient <- pca_scores$patient
+pca_scores_lognorm$sample <- pca_scores$sample
+pca_scores_lognorm$inflammation <- pca_scores$inflammation
+
+ggplot(pca_scores_lognorm, aes(x=PC1, y=PC2, colour = patient, shape = inflammation, label=patient)) +
+  geom_point(size=5)+
+  geom_text_repel(nudge_x = 2)
+```
+
+```{r fig.width=14}
+ggplot(pca_scores_lognorm, aes(x=PC1, y=PC2, colour = inflammation)) +
+  geom_point(size=2)
+```
+
+
+```{r}
+# Extract the rotations for both pcas (raw and lognormalized)
+pca_rotations <- data.frame(pca_lognorm$rotation[,1:10])
+pca_lognorm_rotations <- data.frame(pca_lognorm$rotation[,1:10])
+
+# Add column with gene names to rotations dataframes
+pca_rotations$gene_name <- genes_list$gene_name
+pca_lognorm_rotations$gene_name <- genes_list$gene_name
+```
+
+```{r}
+# Show genes with higher rotation values for pca (raw counts)
+top10_pos_pca_lognorm <- pca_lognorm_rotations %>% arrange(desc(PC1)) %>% select(c(PC1, gene_name))
+top10_pos_pca_lognorm <- top10_pos_pca_lognorm[1:10,]
+top10_pos_pca_lognorm$gene_name
+```
+
+```{r}
+# Show genes with more negative rotation values for pca (raw counts)
+top10_neg_pca_lognorm <- pca_lognorm_rotations %>% arrange(PC1) %>% select(c(PC1, gene_name))
+top10_neg_pca_lognorm <- top10_neg_pca_lognorm[1:10,]
+top10_neg_pca_lognorm$gene_name
+```
+
+
+
+
