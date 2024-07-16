@@ -24,11 +24,13 @@ if (!require("ggplot2")) install.packages("ggplot2")
 if (!require("stringr")) install.packages("stringr")
 if (!require("ggrepel")) install.packages("ggrepel")
 if (!require("dplyr")) install.packages("dplyr")
+if (!require("patchwork")) install.packages("patchwork")
 
 library(ggplot2)
 library(stringr)
 library(ggrepel)
 library(dplyr)
+library(patchwork)
 ```
 
 ```{r}
@@ -79,7 +81,7 @@ ggplot(data = pca_metrics[1:10,], aes(x=PCs, y=Proportion_of_Variance)) +
   labs(title="PCA - Variance explained per principal component")
 ```
 
-```{r}
+```{r fig.width=12}
 # Create dataframe to contain relevant metadata in appropriate format
 df_samples_treatments <- data.frame(row.names = rownames(metadata_matrix_2))
 
@@ -98,11 +100,22 @@ for (row in (1:nrow(df_samples_treatments))){
 }
 
 # Get inflammation status
-df_samples_treatments$treatment <- ""
+df_samples_treatments$inflammation <- ""
 for (row in (1:nrow(df_samples_treatments))){
   df_samples_treatments[row, ncol(df_samples_treatments)] <- gsub(".* ", "", df_samples_treatments[row, ncol(df_samples_treatments)-2])
 }
 
+# Get sample location
+df_samples_treatments$location <- ""
+for (row in (1:nrow(df_samples_treatments))){
+  df_samples_treatments[row, "location"] <- gsub("location: ", "", metadata_matrix_2[row, 11])
+}
+
+# Get sampling hospital
+df_samples_treatments$hospital <- ""
+for (row in (1:nrow(df_samples_treatments))){
+  df_samples_treatments[row, "hospital"] <- gsub("site: ", "", metadata_matrix_2[row, 10])
+}
 
 # Create dataframe out of the pca scores
 pca_scores <- data.frame(pca$x)[1:10]
@@ -125,14 +138,42 @@ pca_scores$sample <- rownames(pca_scores)
 pca_scores$inflammation <- ""
 for(row_scores in 1:nrow(pca_scores)){
   for(row_df in 1:nrow(df_samples_treatments)){
-    if(pca_scores[row_scores, ncol(pca_scores)-1] == df_samples_treatments[row_df, 2]){
-      pca_scores[row_scores, ncol(pca_scores)] <- df_samples_treatments[row_df, 3]
+    if(pca_scores[row_scores, "sample"] == df_samples_treatments[row_df, "sample"]){
+      pca_scores[row_scores, "inflammation"] <- df_samples_treatments[row_df, "inflammation"]
     }
   }
 }
 
-ggplot(pca_scores, aes(x=PC1, y=PC2, colour = inflammation)) +
+# Get the sample location in the PCA scores dataframe
+pca_scores$location <- ""
+for(row_scores in 1:nrow(pca_scores)){
+  for(row_df in 1:nrow(df_samples_treatments)){
+    if(pca_scores[row_scores, "sample"] == df_samples_treatments[row_df, "sample"]){
+      pca_scores[row_scores, "location"] <- df_samples_treatments[row_df, "location"]
+    }
+  }
+}
+
+# Get the sampling hospital in the PCA scores dataframe
+pca_scores$hospital <- ""
+for(row_scores in 1:nrow(pca_scores)){
+  for(row_df in 1:nrow(df_samples_treatments)){
+    if(pca_scores[row_scores, "sample"] == df_samples_treatments[row_df, "sample"]){
+      pca_scores[row_scores, "hospital"] <- df_samples_treatments[row_df, "hospital"]
+    }
+  }
+}
+
+p1 <- ggplot(pca_scores, aes(x=PC1, y=PC2, colour = inflammation)) +
   geom_point()
+
+p2 <- ggplot(pca_scores, aes(x=PC1, y=PC2, colour = location)) +
+  geom_point()
+
+p3 <- ggplot(pca_scores, aes(x=PC1, y=PC2, colour = hospital)) +
+  geom_point()
+
+p1+p2+p3
 ```
 
 **Data for this PCA was not normalized before PCA nor scaled in PCA. Problems due to different amount of total counts in different samples?**
@@ -210,15 +251,15 @@ pca_lognorm_rotations$gene_name <- genes_list$gene_name
 
 ```{r}
 # Show genes with higher rotation values for pca (raw counts)
-top10_pos_pca_lognorm <- pca_lognorm_rotations %>% arrange(desc(PC1)) %>% select(c(PC1, gene_name))
-top10_pos_pca_lognorm <- top10_pos_pca_lognorm[1:10,]
+top_pos_pca_lognorm <- pca_lognorm_rotations %>% arrange(desc(PC1)) %>% select(c(PC1, gene_name))
+top10_pos_pca_lognorm <- top_pos_pca_lognorm[1:10,]
 top10_pos_pca_lognorm$gene_name
 ```
 
 ```{r}
 # Show genes with more negative rotation values for pca (raw counts)
-top10_neg_pca_lognorm <- pca_lognorm_rotations %>% arrange(PC1) %>% select(c(PC1, gene_name))
-top10_neg_pca_lognorm <- top10_neg_pca_lognorm[1:10,]
+top_neg_pca_lognorm <- pca_lognorm_rotations %>% arrange(PC1) %>% select(c(PC1, gene_name))
+top10_neg_pca_lognorm <- top_neg_pca_lognorm[1:10,]
 top10_neg_pca_lognorm$gene_name
 ```
 
