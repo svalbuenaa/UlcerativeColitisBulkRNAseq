@@ -65,7 +65,7 @@ cat(patient_ids)
 ```
 
 
-```{r, out.width="100%}
+```{r, out.width="100%"}
 # Prepare data for PCA
 genes_list_for_pca <- t(genes_list[,c(10:ncol(genes_list))])
 colnames(genes_list_for_pca) <- genes_list[,3]
@@ -176,14 +176,16 @@ p1 <- ggplot(pca_scores, aes(x=PC1, y=PC2, colour = inflammation)) +
   labs(title = "Inflammation status")+
   theme(legend.position = "bottom",
         plot.title = element_text(hjust = 0.5),
-        aspect.ratio = 1)
+        aspect.ratio = 1)+
+  guides(colour=guide_legend(ncol=1))
 
 p2 <- ggplot(pca_scores, aes(x=PC1, y=PC2, colour = location)) +
   geom_point(size=2)+
   labs(title = "Sample location")+
 theme(legend.position = "bottom",
         plot.title = element_text(hjust = 0.5),
-        aspect.ratio = 1)
+        aspect.ratio = 1)+
+  guides(colour=guide_legend(ncol=2))
 
 p1+p2+plot_annotation(title = "PCA scores according to sample metadata - inflammation status and sample location",
                       subtitle = "Counts not normalized",
@@ -253,14 +255,16 @@ p1 <- ggplot(pca_scores_lognorm, aes(x=PC1, y=PC2, colour = inflammation)) +
   labs(title = "Inflammation status")+
   theme(legend.position = "bottom",
         plot.title = element_text(hjust = 0.5),
-        aspect.ratio = 1)
+        aspect.ratio = 1)+
+  guides(colour=guide_legend(ncol=1))
 
 p2 <- ggplot(pca_scores_lognorm, aes(x=PC1, y=PC2, colour = location)) +
   geom_point(size=2)+
   labs(title = "Sample location")+
 theme(legend.position = "bottom",
         plot.title = element_text(hjust = 0.5),
-        aspect.ratio = 1)
+        aspect.ratio = 1)+
+  guides(colour=guide_legend(ncol=2))
 
 p1+p2+plot_annotation(title = "PCA scores according to sample metadata - inflammation status and sample location",
                       subtitle = "Counts log-normalized",
