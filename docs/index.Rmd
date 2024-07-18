@@ -33,12 +33,21 @@ if (!require("stringr")) install.packages("stringr")
 if (!require("ggrepel")) install.packages("ggrepel")
 if (!require("dplyr")) install.packages("dplyr")
 if (!require("patchwork")) install.packages("patchwork")
+if (!require("BiocManager")) install.packages("BiocManager")
+
+if (!require("clusterProfiler")) BiocManager::install("clusterProfiler")
+if (!require("AnnotationDbi")) BiocManager::install("AnnotationDbi")
+if (!require("org.Hs.eg.db")) BiocManager::install("org.Hs.eg.db")
 
 library(ggplot2)
 library(stringr)
 library(ggrepel)
 library(dplyr)
 library(patchwork)
+library(clusterProfiler)
+library(AnnotationDbi)
+library(org.Hs.eg.db)
+
 ```
 
 ```{r, echo=FALSE}
@@ -342,7 +351,7 @@ pca_lognorm_rotations$gene_name <- genes_list$gene_name
 
 ```{r}
 # Show genes with higher rotation values for pca (raw counts)
-top_pos_pca_lognorm <- pca_lognorm_rotations %>% arrange(desc(PC1)) %>% select(c(PC1, gene_name))
+top_pos_pca_lognorm <- pca_lognorm_rotations %>% arrange(desc(PC1)) %>% dplyr::select(c(PC1, gene_name))
 top20_pos_pca_lognorm <- top_pos_pca_lognorm[1:20,]
 top20_pos_pca_lognorm$gene_name
 
@@ -350,12 +359,23 @@ top20_pos_pca_lognorm$gene_name
 ```
 
 ```{r}
-# Show genes with more negative rotation values for pca (raw counts)
-top_neg_pca_lognorm <- pca_lognorm_rotations %>% arrange(PC1) %>% select(c(PC1, gene_name))
-top20_neg_pca_lognorm <- top_neg_pca_lognorm[1:20,]
-top20_neg_pca_lognorm$gene_name
+GO_PC1_pos <- enrichGO(gene = top20_pos_pca_lognorm$gene_name, OrgDb = "org.Hs.eg.db", keyType = "SYMBOL", ont = "BP")
+
+temp_GO_PC1_pos <- as.data.frame(GO_PC1_pos)[,c("ID", "Description", "GeneRatio", "p.adjust")]
+temp_GO_PC1_pos$Description <- strtrim(temp_GO_PC1_pos$Description, 50)
+temp_GO_PC1_pos
 ```
 
 
+```{r}
+# Show genes with more negative rotation values for pca (raw counts)
+top_neg_pca_lognorm <- pca_lognorm_rotations %>% arrange(PC1) %>% dplyr::select(c(PC1, gene_name))
+top20_neg_pca_lognorm <- top_neg_pca_lognorm[1:20,]
+top20_neg_pca_lognorm$gene_name
+```
+```{r}
+GO_PC1_neg <- enrichGO(gene = top20_neg_pca_lognorm$gene_name, OrgDb = "org.Hs.eg.db", keyType = "SYMBOL", ont = "BP")
 
+as.data.frame(GO_PC1_neg)[,c("ID", "Description", "GeneRatio", "p.adjust")]
+```
 
