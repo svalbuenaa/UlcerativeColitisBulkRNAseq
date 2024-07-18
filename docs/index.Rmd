@@ -363,6 +363,7 @@ GO_PC1_pos <- enrichGO(gene = top20_pos_pca_lognorm$gene_name, OrgDb = "org.Hs.e
 
 temp_GO_PC1_pos <- as.data.frame(GO_PC1_pos)[,c("ID", "Description", "GeneRatio", "p.adjust")]
 temp_GO_PC1_pos$Description <- strtrim(temp_GO_PC1_pos$Description, 50)
+rownames(temp_GO_PC1_pos) <- 1:nrow(temp_GO_PC1_pos)
 temp_GO_PC1_pos
 ```
 
@@ -376,6 +377,8 @@ top20_neg_pca_lognorm$gene_name
 ```{r}
 GO_PC1_neg <- enrichGO(gene = top20_neg_pca_lognorm$gene_name, OrgDb = "org.Hs.eg.db", keyType = "SYMBOL", ont = "BP")
 
-as.data.frame(GO_PC1_neg)[,c("ID", "Description", "GeneRatio", "p.adjust")]
+temp_GO_PC1_neg <- as.data.frame(GO_PC1_neg)[,c("ID", "Description", "GeneRatio", "p.adjust")]
+rownames(temp_GO_PC1_neg) <- 1:nrow(temp_GO_PC1_neg)
+temp_GO_PC1_neg
 ```
 
