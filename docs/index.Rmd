@@ -34,10 +34,12 @@ if (!require("ggrepel")) install.packages("ggrepel")
 if (!require("dplyr")) install.packages("dplyr")
 if (!require("patchwork")) install.packages("patchwork")
 if (!require("BiocManager")) install.packages("BiocManager")
+if (!require("ggbreak")) install.packages("ggbreak")
 
 if (!require("clusterProfiler")) BiocManager::install("clusterProfiler")
 if (!require("AnnotationDbi")) BiocManager::install("AnnotationDbi")
 if (!require("org.Hs.eg.db")) BiocManager::install("org.Hs.eg.db")
+if (!require("org.Hs.eg.db")) BiocManager::install("DESeq2")
 
 library(ggplot2)
 library(stringr)
@@ -47,7 +49,9 @@ library(patchwork)
 library(clusterProfiler)
 library(AnnotationDbi)
 library(org.Hs.eg.db)
-
+library(DESeq2)
+library(plotly)
+library(ggbreak) 
 ```
 
 ```{r, echo=FALSE}
@@ -349,6 +353,7 @@ pca_rotations$gene_name <- genes_list$gene_name
 pca_lognorm_rotations$gene_name <- genes_list$gene_name
 ```
 
+### GO enrichment PC1 loadings
 ```{r}
 # Show genes with higher rotation values for pca (raw counts)
 top_pos_pca_lognorm <- pca_lognorm_rotations %>% arrange(desc(PC1)) %>% dplyr::select(c(PC1, gene_name))
@@ -381,4 +386,136 @@ temp_GO_PC1_neg <- as.data.frame(GO_PC1_neg)[,c("ID", "Description", "GeneRatio"
 rownames(temp_GO_PC1_neg) <- 1:nrow(temp_GO_PC1_neg)
 temp_GO_PC1_neg
 ```
+
+
+# Differential expression analysis
+
+```{r}
+cts <- as.matrix(genes_list[,c(10:ncol(genes_list))])
+rownames(cts) <- genes_list[[3]]
+
+coldata <- pca_scores[,c(11, 13:15)]
+coldata$inflammation <- factor(coldata$inflammation)
+coldata$location <- factor(coldata$location)
+coldata$hospital <- factor(coldata$hospital)
+
+cts <- cts[, rownames(coldata)]
+
+as.data.frame(cts)
+```
+
+
+```{r}
+coldata
+```
+
+```{r warning=FALSE}
+dds <- suppressMessages(DESeqDataSetFromMatrix(countData = cts,
+                              colData = coldata,
+                              design = ~ inflammation))
+```
+
+```{r}
+smallestGroupSize <- 3
+keep <- rowSums(counts(dds) >= 10) >= smallestGroupSize
+dds <- dds[keep,]
+```
+
+
+
+```{r}
+dds$inflamation <- relevel(dds$inflammation, ref = "Non-Inflamed")
+```
+
+
+
+
+```{r}
+dds <- suppressMessages(DESeq(dds))
+res <- results(dds)
+```
+
+
+```{r}
+gene_list <- as.data.frame(res)
+gene_list$Gene <- rownames(gene_list)
+gene_list %>% filter(padj<0.05) %>% arrange(padj)
+```
+
+
+```{r}
+gene_list$significance <- NA
+for (gene in 1:nrow(gene_list)){
+  if (gene_list[gene,"log2FoldChange"]>=1 & gene_list[gene,"padj"]< 0.05){
+    gene_list[gene, "significance"] <- "Up"
+  }  
+  
+  else if (gene_list[gene,"log2FoldChange"]<=(-1) & gene_list[gene,"padj"]< 0.05){
+    gene_list[gene, "significance"] <- "Down"
+  } 
+  
+  else if (abs(gene_list[gene,"log2FoldChange"])<1 | gene_list[gene,"padj"]>= 0.05){
+    gene_list[gene, "significance"] <- "No sig"
+  }
+}
+
+gene_list_sig_down_outlier <- gene_list %>% filter(log2FoldChange < (-20))
+```
+
+
+
+```{r}
+p1 <- ggplot(gene_list_sig_down_outlier, aes(x=log2FoldChange, y=-log10(padj), label=Gene)) + 
+  geom_point(color="#6696ea") + 
+  xlim(-31, -19) + 
+  scale_x_continuous(breaks=c(-30, -25, -20), expand = expansion(mult = c(0.01, 0.01))) + 
+  ylim(0,62) +
+  theme_light() +
+  annotate("text", x = -30, y = -5, label = "-30") + 
+  annotate("text", x = -20, y = -5, label = "-20") +
+  theme(panel.border = element_blank(),
+        axis.title.x = element_blank())+
+  geom_vline(xintercept = -30)+
+  geom_hline(yintercept=0)+
+  geom_hline(yintercept=62)
+
+p2 <- ggplot(gene_list%>%filter(log2FoldChange>(-20)), aes(x=log2FoldChange, y=-log10(padj), label=Gene, color=significance))+
+  geom_point() +
+  xlim(-10, 10)+
+  scale_x_continuous(breaks=seq(-10, 10, 5), expand = expansion(mult = c(0.01, 0.01))) + 
+  ylim(0,62)+
+  theme_light()+
+  theme(axis.title.y = element_blank(), 
+        axis.text.y = element_blank(),
+        panel.border = element_blank())+
+  geom_vline(xintercept = 10)+
+  geom_hline(yintercept=0)+
+  geom_hline(yintercept=62)+
+  scale_color_manual(values = c("Up"="#b02428",
+                                "No sig"="grey",
+                                "Down"="#6697ea"))+
+  labs(color = "Significance")
+
+p1plotly <- ggplotly(p1)
+p2plotly <- ggplotly(p2)
+
+subplot(p1plotly, p2plotly, widths = c(0.20, 0.80)) %>% 
+  layout(title = list(text = "DE analysis Not-Inflamed vs Inflamed samples", x=0.15),
+         legend = list(y = 0.5, tracegroupgap = 0.5))
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
