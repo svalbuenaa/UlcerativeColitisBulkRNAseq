@@ -159,7 +159,7 @@ p1 <- plot_CoV_mean(stats_, arg_x = "Mean_expression", arg_y = "CoV", arg_lab_ti
 p1
 ```
 
-### Mean vs CoV for most variable genes
+## Mean vs CoV for most variable genes
 ```{r}
 most_variable_genes <- (stats_ %>% arrange(desc(CoV)))[1:500,]
 p2 <- plot_CoV_mean(most_variable_genes, arg_x = "Mean_expression", arg_y = "CoV", arg_lab_title = "Mean vs CoV, all samples, 500 most variable genes", arg_lab_x = "Mean expression across samples", arg_lab_y = "Coefficient of Variation")
