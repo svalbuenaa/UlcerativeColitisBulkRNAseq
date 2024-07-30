@@ -54,6 +54,32 @@ library(plotly)
 library(ggbreak) 
 ```
 
+```{r}
+CoV_mean <- function(arg_exp){
+  mean_values_ <- rowMeans(arg_exp)
+  CoV_values_ <- apply(arg_exp, 1, function(row) sd(row) / mean(row))
+  stats_Experiment <- cbind(mean_values_, CoV_values_)
+  colnames(stats_Experiment) <- c("Mean_expression",
+                                  "CoV")
+  return(as.data.frame(stats_Experiment))
+}
+
+```
+
+```{r}
+plot_CoV_mean <- function(arg_dataframe, arg_x, arg_y,
+                          arg_lab_title = "title", arg_lab_x = "x", arg_lab_y = "y",
+                          arg_color = "blue"){
+  ggplot(arg_dataframe, aes_string(x = arg_x, y = arg_y, label="Gene")) +
+    geom_point(color = arg_color, alpha = 0.4) +
+    labs(x = arg_lab_x, y = arg_lab_y, title = arg_lab_title)+
+    theme_light()+
+    theme(plot.title = element_text(size = 12, hjust=0.5))+
+    xlim(2.5, 15)+
+    ylim(-0.01, 0.5)
+}
+```
+
 ```{r, echo=FALSE}
 if(file.exists(file.path("Z:", "My Drive", "Bioinformatics project bulk-RNAseq"))){
   project_dir <- file.path("Z:", "My Drive", "Bioinformatics project bulk-RNAseq")
@@ -100,29 +126,70 @@ for (el in sort(location)){
 }
 ```
 
+## Lognormalization of counts
+```{r}
+# Create df for normalization:
+genes_list_lognorm <- data.frame(matrix(NA, nrow = nrow(genes_list), ncol = ncol(genes_list)))
+
+# Columns before counts
+for (col in 1:9){
+  genes_list_lognorm[[col]] <- genes_list[[col]]
+}
+
+# Column names
+colnames(genes_list_lognorm) <- colnames(genes_list)
+
+for (i in 10:ncol(genes_list)) {
+  genes_list_lognorm[, i] <- log2((genes_list[, i] / colSums(genes_list[i]) * 1000000)+8)
+}
+
+genes_list_lognorm[,c(3,10:ncol(genes_list))]
+```
+
+# Most variable genes
+## Mean vs CoV for all genes
+```{r}
+df_mean_vs_CoV <- genes_list_lognorm[,10:ncol(genes_list)]
+stats_ <- CoV_mean(df_mean_vs_CoV)
+stats_$Gene <- genes_list_lognorm[[3]]
+p1 <- plot_CoV_mean(stats_, arg_x = "Mean_expression", arg_y = "CoV", arg_lab_title = "Mean vs CoV, all samples", arg_lab_x = "Mean expression across samples", arg_lab_y = "Coefficient of Variation")
+
+p1
+```
+
+### Mean vs CoV for most variable genes
+```{r}
+most_variable_genes <- (stats_ %>% arrange(desc(CoV)))[1:500,]
+p2 <- plot_CoV_mean(most_variable_genes, arg_x = "Mean_expression", arg_y = "CoV", arg_lab_title = "Mean vs CoV, all samples, 500 most variable genes", arg_lab_x = "Mean expression across samples", arg_lab_y = "Coefficient of Variation")
+
+plotlyp2 <- ggplotly(p2)
+plotlyp2
+```
+
+
 # Principal component analysis (PCA)
 
-## PCA Pre-normalization
+## PCA with all genes
 
 ### Scree plot
-```{r, out.width="100%"}
-# Prepare data for PCA
-genes_list_for_pca <- t(genes_list[,c(10:ncol(genes_list))])
-colnames(genes_list_for_pca) <- genes_list[,3]
+```{r out.width="100%"}
+# Create dataframe for PCA of lognormalized samples
+genes_list_lognorm_for_pca <- t(genes_list_lognorm[,10:ncol(genes_list_lognorm)])
+colnames(genes_list_lognorm_for_pca) <- rownames(genes_list_lognorm)
 
-# PCA
-pca <- prcomp(genes_list_for_pca, scale=F)
+# PCA of lognorm counts
+pca_lognorm <- prcomp(genes_list_lognorm_for_pca)
 
 # Screeplot
-pca_metrics <- as.data.frame(t(summary(pca)$importance))
-colnames(pca_metrics) <- c("Standard_deviation", "Proportion_of_Variance", "Cumulative_Proportion")
-pca_metrics$PCs <- as.numeric(substr(rownames(pca_metrics), 3, length(rownames(pca_metrics))))
+pca_lognorm_metrics <- as.data.frame(t(summary(pca_lognorm)$importance))
+colnames(pca_lognorm_metrics) <- c("Standard_deviation", "Proportion_of_Variance", "Cumulative_Proportion")
+pca_lognorm_metrics$PCs <- as.numeric(substr(rownames(pca_lognorm_metrics), 3, length(rownames(pca_lognorm_metrics))))
 
-ggplot(data = pca_metrics[1:10,], aes(x=PCs, y=Proportion_of_Variance)) +
+ggplot(data = pca_lognorm_metrics[1:10,], aes(x=PCs, y=Proportion_of_Variance)) +
   geom_line(color="blue") +
   geom_point() +
   scale_x_continuous(breaks = c(1:10)) +
-  labs(title="PCA - Variance explained per principal component")+
+  labs(title="PCA of lognormalized counts - Variance explained per principal component")+
   xlab("Principal component")+
   ylab("Proportion of variance explained")+
   theme_light()+
@@ -169,141 +236,50 @@ for (row in (1:nrow(df_samples_treatments))){
   df_samples_treatments[row, "hospital"] <- gsub("site: ", "", metadata_matrix_2[row, 10])
 }
 
-# Create dataframe out of the pca scores
-pca_scores <- data.frame(pca$x)[1:10]
+# Create pca scores dataframe for lognormalized counts pca
+pca_scores_lognorm <- data.frame(pca_lognorm$x[,1:10])
+pca_scores_lognorm$patient <- ""
 
-# Get the patient id in the pca scores dataframe
-pca_scores$patient <- ""
-
-for (row in (1:nrow(pca_scores))){
+for (row in (1:nrow(pca_scores_lognorm))){
   for (id_patient in 1:length(patient_ids)){
-    if(!is.na(str_extract(rownames(pca_scores[row,]), patient_ids[id_patient]))){
-      pca_scores[row, ncol(pca_scores)] <- str_extract(rownames(pca_scores[row,]), patient_ids[id_patient])
+    if(!is.na(str_extract(rownames(pca_scores_lognorm[row,]), patient_ids[id_patient]))){
+      pca_scores_lognorm[row, ncol(pca_scores_lognorm)] <- str_extract(rownames(pca_scores_lognorm[row,]), patient_ids[id_patient])
     }
   }
 }
 
 # Get the sample id in the PCA scores dataframe
-pca_scores$sample <- rownames(pca_scores)
+pca_scores_lognorm$sample <- rownames(pca_scores_lognorm)
 
 # Get the inflammation status of each sample
-pca_scores$inflammation <- ""
-for(row_scores in 1:nrow(pca_scores)){
+pca_scores_lognorm$inflammation <- ""
+for(row_scores in 1:nrow(pca_scores_lognorm)){
   for(row_df in 1:nrow(df_samples_treatments)){
-    if(pca_scores[row_scores, "sample"] == df_samples_treatments[row_df, "sample"]){
-      pca_scores[row_scores, "inflammation"] <- df_samples_treatments[row_df, "inflammation"]
+    if(pca_scores_lognorm[row_scores, "sample"] == df_samples_treatments[row_df, "sample"]){
+      pca_scores_lognorm[row_scores, "inflammation"] <- df_samples_treatments[row_df, "inflammation"]
     }
   }
 }
 
 # Get the sample location in the PCA scores dataframe
-pca_scores$location <- ""
-for(row_scores in 1:nrow(pca_scores)){
+pca_scores_lognorm$location <- ""
+for(row_scores in 1:nrow(pca_scores_lognorm)){
   for(row_df in 1:nrow(df_samples_treatments)){
-    if(pca_scores[row_scores, "sample"] == df_samples_treatments[row_df, "sample"]){
-      pca_scores[row_scores, "location"] <- df_samples_treatments[row_df, "location"]
+    if(pca_scores_lognorm[row_scores, "sample"] == df_samples_treatments[row_df, "sample"]){
+      pca_scores_lognorm[row_scores, "location"] <- df_samples_treatments[row_df, "location"]
     }
   }
 }
 
 # Get the sampling hospital in the PCA scores dataframe
-pca_scores$hospital <- ""
-for(row_scores in 1:nrow(pca_scores)){
+pca_scores_lognorm$hospital <- ""
+for(row_scores in 1:nrow(pca_scores_lognorm)){
   for(row_df in 1:nrow(df_samples_treatments)){
-    if(pca_scores[row_scores, "sample"] == df_samples_treatments[row_df, "sample"]){
-      pca_scores[row_scores, "hospital"] <- df_samples_treatments[row_df, "hospital"]
+    if(pca_scores_lognorm[row_scores, "sample"] == df_samples_treatments[row_df, "sample"]){
+      pca_scores_lognorm[row_scores, "hospital"] <- df_samples_treatments[row_df, "hospital"]
     }
   }
 }
-```
-
-### PCA Scores
-```{r out.width="130%"}
-p1 <- ggplot(pca_scores, aes(x=PC1, y=PC2, colour = inflammation)) +
-  geom_point(size=2)+
-  labs(title = "Inflammation status")+
-  theme_light()+
-  theme(legend.position = "bottom",
-        plot.title = element_text(hjust = 0.5),
-        aspect.ratio = 1)+
-  guides(colour=guide_legend(ncol=1))
-
-p2 <- ggplot(pca_scores, aes(x=PC1, y=PC2, colour = location)) +
-  geom_point(size=2)+
-  labs(title = "Sample location")+
-  theme_light()+
-theme(legend.position = "bottom",
-        plot.title = element_text(hjust = 0.5),
-        aspect.ratio = 1)+
-  guides(colour=guide_legend(ncol=2))
-
-p1+p2+plot_annotation(title = "PCA scores according to sample metadata - inflammation status and sample location",
-                      subtitle = "Counts not normalized",
-                      theme = theme(plot.title = element_text(hjust = 0.5, vjust = 3),
-                                    plot.subtitle = element_text(hjust = 0.5, vjust = 3)))
-```
-
-
-
-## Lognormalization of counts
-```{r}
-# Create df for normalization:
-genes_list_lognorm <- data.frame(matrix(NA, nrow = nrow(genes_list), ncol = ncol(genes_list)))
-
-# Columns before counts
-for (col in 1:9){
-  genes_list_lognorm[[col]] <- genes_list[[col]]
-}
-
-# Column names
-colnames(genes_list_lognorm) <- colnames(genes_list)
-
-for (i in 10:ncol(genes_list)) {
-  genes_list_lognorm[, i] <- log2((genes_list[, i] / colSums(genes_list[i]) * 1000000)+8)
-}
-
-genes_list_lognorm[,c(3,10:ncol(genes_list))]
-```
-
-## PCA post lognormalization
-
-### Scree plot
-```{r out.width="100%"}
-# Create dataframe for PCA of lognormalized samples
-genes_list_lognorm_for_pca <- t(genes_list_lognorm[,10:ncol(genes_list_lognorm)])
-colnames(genes_list_lognorm_for_pca) <- rownames(genes_list_lognorm)
-
-# PCA of lognorm counts
-pca_lognorm <- prcomp(genes_list_lognorm_for_pca)
-
-# Screeplot
-pca_lognorm_metrics <- as.data.frame(t(summary(pca_lognorm)$importance))
-colnames(pca_lognorm_metrics) <- c("Standard_deviation", "Proportion_of_Variance", "Cumulative_Proportion")
-pca_lognorm_metrics$PCs <- as.numeric(substr(rownames(pca_lognorm_metrics), 3, length(rownames(pca_lognorm_metrics))))
-
-ggplot(data = pca_lognorm_metrics[1:10,], aes(x=PCs, y=Proportion_of_Variance)) +
-  geom_line(color="blue") +
-  geom_point() +
-  scale_x_continuous(breaks = c(1:10)) +
-  labs(title="PCA of lognormalized counts - Variance explained per principal component")+
-  xlab("Principal component")+
-  ylab("Proportion of variance explained")+
-  theme_light()+
-  theme(plot.title = element_text(size=12),
-        axis.title.x = element_text(size = 11),
-        axis.title.y = element_text(size = 11),
-        text = element_text(size=11),
-        aspect.ratio = 1/1.5)
-```
-
-```{r}
-# Create pca scores dataframe for lognormalized counts pca
-pca_scores_lognorm <- data.frame(pca_lognorm$x[,1:10])
-pca_scores_lognorm$patient <- pca_scores$patient
-pca_scores_lognorm$sample <- pca_scores$sample
-pca_scores_lognorm$inflammation <- pca_scores$inflammation
-pca_scores_lognorm$location <- pca_scores$location
-pca_scores_lognorm$hospital <- pca_scores$hospital
 ```
 
 ### PCA Scores
@@ -343,8 +319,11 @@ ggplot(pca_scores_lognorm, aes(x=PC1, y=PC2, colour = patient, shape = inflammat
 ```
 
 
+
+
+
 ```{r}
-# Extract the rotations for both pcas (raw and lognormalized)
+# Extract the rotations for pcas with lognormalized counts, all genes
 pca_rotations <- data.frame(pca_lognorm$rotation[,1:10])
 pca_lognorm_rotations <- data.frame(pca_lognorm$rotation[,1:10])
 
@@ -360,7 +339,6 @@ top_pos_pca_lognorm <- pca_lognorm_rotations %>% arrange(desc(PC1)) %>% dplyr::s
 top20_pos_pca_lognorm <- top_pos_pca_lognorm[1:20,]
 top20_pos_pca_lognorm$gene_name
 
-# DO 
 ```
 
 ```{r}
@@ -394,7 +372,7 @@ temp_GO_PC1_neg
 cts <- as.matrix(genes_list[,c(10:ncol(genes_list))])
 rownames(cts) <- genes_list[[3]]
 
-coldata <- pca_scores[,c(11, 13:15)]
+coldata <- pca_scores_lognorm[,c(11, 13:15)]
 coldata$inflammation <- factor(coldata$inflammation)
 coldata$location <- factor(coldata$location)
 coldata$hospital <- factor(coldata$hospital)
@@ -495,7 +473,7 @@ p2 <- suppressMessages(ggplot(gene_list%>%filter(log2FoldChange>(-20)), aes(x=lo
   scale_color_manual(values = c("Up"="#b02428", "Not significant"="grey", "Down"="#6697ea"))+ 
   labs(color = "Significance"))
 
-p1plotly <- ggplotly(p1, tooltip = c("Gene", "log"))%>% layout(height = 480)
+p1plotly <- ggplotly(p1) %>% layout(height = 480)
 p2plotly <- ggplotly(p2)
 
 subplot(p1plotly, p2plotly, widths = c(0.20, 0.80)) %>% 
@@ -523,6 +501,7 @@ subplot(p1plotly, p2plotly, widths = c(0.20, 0.80)) %>%
     )
   )
 ```
+
 
 
 
