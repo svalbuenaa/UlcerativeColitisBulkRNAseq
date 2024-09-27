@@ -446,7 +446,7 @@ dds <- dds[keep,]
 
 
 ```{r}
-dds$inflamation <- relevel(dds$inflammation, ref = "Non-Inflamed")
+dds$inflammation <- relevel(dds$inflammation, ref = "Non-Inflamed")
 ```
 
 
@@ -481,47 +481,84 @@ for (gene in 1:nrow(gene_list)){
   }
 }
 
-gene_list_sig_down_outlier <- gene_list %>% filter(log2FoldChange < (-20))
+gene_list_sig_up_outlier <- gene_list %>% filter(log2FoldChange > 20)
 ```
 
 
 
 ```{r, message=FALSE, warning=FALSE, echo=FALSE}
-p1 <- suppressMessages(ggplot(gene_list_sig_down_outlier, aes(x=log2FoldChange, y=-log10(padj), label=Gene)) + 
-  geom_point(size=0.8, color="#6696ea") + 
-  xlim(-31, -19) + 
-  scale_x_continuous(breaks=c(-30, -25, -20), expand = expansion(mult = c(0.01, 0.01))) + 
-  ylim(0,62) + 
-  theme_light() + 
-  annotate("text", x = -30, y = -5, label = "-30") + 
-  annotate("text", x = -20, y = -5, label = "-20") + 
-  theme(panel.border = element_blank(), 
-        axis.title.x = element_blank())+ 
-  geom_vline(xintercept = -30, size=0.15)+ 
-  geom_hline(yintercept=0, size=0.15)+ 
-  geom_hline(yintercept=62, size=0.15))
-
-p2 <- suppressMessages(ggplot(gene_list%>%filter(log2FoldChange>(-20)), aes(x=log2FoldChange, y=-log10(padj), label=Gene, color=significance))+ 
+p1 <- suppressMessages(ggplot(gene_list%>%filter(log2FoldChange>(-20)), aes(x=log2FoldChange, y=-log10(padj), label=Gene, color=significance))+ 
   geom_point(size=0.8) + 
   xlim(-12, 10)+ 
   scale_x_continuous(breaks=seq(-10, 10, 5), expand = expansion(mult = c(0, 0.001))) + 
   annotate("text", x = -10, y = -5, label = "-10") + 
   ylim(0,62)+ 
   theme_light()+ 
-  theme(axis.title.y = element_blank(), 
-        axis.text.y = element_blank(), 
+  theme(
         panel.border = element_blank())+ 
-  geom_vline(xintercept = 10, size=0.15)+ 
+  geom_vline(xintercept = -10, size=0.15)+ 
   geom_hline(yintercept=0, size=0.15)+ 
   geom_hline(yintercept=62, size=0.15)+ 
   scale_color_manual(values = c("Up"="#b02428", "Not significant"="grey", "Down"="#6697ea"))+ 
   labs(color = "Significance"))
 
-p1plotly <- ggplotly(p1) %>% layout(height = 480)
-p2plotly <- ggplotly(p2)
+p2 <- suppressMessages(ggplot(gene_list_sig_up_outlier, aes(x=log2FoldChange, y=-log10(padj), label=Gene)) + 
+  geom_point(size=0.8, color="#b02428") + 
+  xlim(19, 31) + 
+  scale_x_continuous(breaks=c(20, 25, 30), expand = expansion(mult = c(0.01, 0.01))) + 
+  ylim(0,62) + 
+  theme_light() + 
+  annotate("text", x = 30, y = -5, label = "30") + 
+  annotate("text", x = 20, y = -5, label = "20") + 
+  theme(panel.border = element_blank(), 
+        axis.title.x = element_blank(),
+        axis.title.y = element_blank(), 
+        axis.text.y = element_blank(), )+ 
+  geom_vline(xintercept = 30, size=0.15)+ 
+  geom_hline(yintercept=0, size=0.15)+ 
+  geom_hline(yintercept=62, size=0.15))
 
-subplot(p1plotly, p2plotly, widths = c(0.20, 0.80)) %>% 
-  layout(margin=list(l=100),
+
+p1plotly <- ggplotly(p1) %>% layout(height = 380)
+p2plotly <- ggplotly(p2) 
+
+p1 <- suppressMessages(ggplot(gene_list%>%filter(log2FoldChange<20), aes(x=log2FoldChange, y=-log10(padj), label=Gene, color=significance))+ 
+  geom_point(size=0.8) + 
+  xlim(-12, 12)+ 
+  scale_x_continuous(breaks=seq(-10, 10, 5), expand = expansion(mult = c(0, 0.001))) + 
+  annotate("text", x = -10, y = -5, label = "-10") + 
+  annotate("text", x = 10, y = -5, label = "10") + 
+  ylim(0,62)+ 
+  theme_light()+ 
+  theme(
+        panel.border = element_blank())+ 
+  geom_vline(xintercept = -10, size=0.15)+ 
+  geom_hline(yintercept=0, size=0.15)+ 
+  scale_color_manual(values = c("Up"="#b02428", "Not significant"="grey", "Down"="#6697ea"))+ 
+  labs(color = "Significance"))
+
+p2 <- suppressMessages(ggplot(gene_list_sig_up_outlier, aes(x=log2FoldChange, y=-log10(padj), label=Gene)) + 
+  geom_point(size=0.8, color="#b02428") + 
+  xlim(19, 31) + 
+  scale_x_continuous(breaks=c(20, 25, 30), expand = expansion(mult = c(0.01, 0.01))) + 
+  ylim(0,62) + 
+  theme_light() + 
+  annotate("text", x = 30, y = -5, label = "30") + 
+  annotate("text", x = 20, y = -5, label = "20") + 
+  theme(panel.border = element_blank(), 
+        axis.title.x = element_blank(),
+        axis.title.y = element_blank(), 
+        axis.text.y = element_blank(), )+ 
+  geom_vline(xintercept = 30, size=0.15)+ 
+  geom_hline(yintercept=0, size=0.15)+ 
+  geom_hline(yintercept=62, size=0.15))
+
+
+p1plotly <- ggplotly(p1) %>% layout(height = 500)
+p2plotly <- ggplotly(p2) 
+
+subplot(p1plotly, p2plotly, widths = c(0.80, 0.20)) %>% 
+  layout(margin=list(l=100, b=80),
     title = list(text = "DE analysis Not-Inflamed vs Inflamed samples", x = 0.2, y = 0.95),
     legend = list(y = 0.5, tracegroupgap = 0.5),
     annotations = list(
@@ -548,10 +585,33 @@ subplot(p1plotly, p2plotly, widths = c(0.20, 0.80)) %>%
 
 
 
+### GO enrichment up and down-regulated genes
+```{r}
+# Get upregulated genes
+dge_up <- gene_list %>% filter(significance == "Up")
+
+# Get downregulated genes
+dge_down <- gene_list %>% filter(significance == "Down")
+```
+
+```{r}
+GO_dge_up <- enrichGO(gene = dge_up$Gene, universe = gene_list$Gene, OrgDb = "org.Hs.eg.db", keyType = "SYMBOL", ont = "BP")
+
+temp_GO_dge_up <- as.data.frame(GO_dge_up)[,c("ID", "Description", "GeneRatio", "p.adjust")]
+temp_GO_dge_up$Description <- strtrim(temp_GO_dge_up$Description, 50)
+rownames(temp_GO_dge_up) <- 1:nrow(temp_GO_dge_up)
+temp_GO_dge_up
+```
 
 
+```{r}
+GO_dge_down <- enrichGO(gene = dge_down$Gene, universe = gene_list$Gene, OrgDb = "org.Hs.eg.db", keyType = "SYMBOL", ont = "BP")
 
-
+temp_GO_dge_down <- as.data.frame(GO_dge_down)[,c("ID", "Description", "GeneRatio", "p.adjust")]
+temp_GO_dge_down$Description <- strtrim(temp_GO_dge_down$Description, 50)
+rownames(temp_GO_dge_down) <- 1:nrow(temp_GO_dge_down)
+temp_GO_dge_down
+```
 
 
 
