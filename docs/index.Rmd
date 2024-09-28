@@ -458,7 +458,7 @@ dds$inflammation <- relevel(dds$inflammation, ref = "Non-Inflamed")
 
 ```{r}
 dds <- suppressMessages(DESeq(dds))
-res <- results(dds)
+res <- results(dds, alpha = 0.05)
 ```
 
 
@@ -466,6 +466,11 @@ res <- results(dds)
 gene_list <- as.data.frame(res)
 gene_list$Gene <- rownames(gene_list)
 gene_list %>% filter(padj<0.05) %>% arrange(padj)
+```
+
+
+```{r}
+plotMA(res)
 ```
 
 
