@@ -343,6 +343,7 @@ pca_scores_lognorm_most_var_metrics$location <- pca_scores_lognorm$location
 pca_scores_lognorm_most_var_metrics$hospital <- pca_scores_lognorm$hospital
 ```
 
+
 ### PCA Scores
 ```{r out.width="100%"}
 p1 <- ggplot(pca_scores_lognorm_most_var_metrics, aes(x=PC1, y=PC2, colour = inflammation)) +
@@ -420,24 +421,24 @@ temp_GO_PC1_neg
 cts <- as.matrix(genes_list[,c(10:ncol(genes_list))])
 rownames(cts) <- genes_list[[3]]
 
-coldata <- pca_scores_lognorm[,c(11, 13:15)]
-coldata$inflammation <- factor(coldata$inflammation)
-coldata$location <- factor(coldata$location)
-coldata$hospital <- factor(coldata$hospital)
+colData <- pca_scores_lognorm[,c(11, 13:15)]
+colData$inflammation <- factor(colData$inflammation, levels = c("Non-Inflamed", "Inflamed"))
+colData$location <- factor(colData$location)
+colData$hospital <- factor(colData$hospital)
 
-cts <- cts[, rownames(coldata)]
+cts <- cts[, rownames(colData)]
 
 as.data.frame(cts)
 ```
 
 
 ```{r}
-coldata
+colData
 ```
 
 ```{r warning=FALSE}
 dds <- suppressMessages(DESeqDataSetFromMatrix(countData = cts,
-                              colData = coldata,
+                              colData = colData,
                               design = ~ inflammation))
 ```
 
@@ -448,24 +449,22 @@ dds <- dds[keep,]
 ```
 
 
-
 ```{r}
-dds$inflammation <- relevel(dds$inflammation, ref = "Non-Inflamed")
+significance_level <- 0.001
 ```
-
 
 
 
 ```{r}
 dds <- suppressMessages(DESeq(dds))
-res <- results(dds, alpha = 0.05)
+res <- results(dds, alpha = significance_level)
 ```
 
 
 ```{r}
 gene_list <- as.data.frame(res)
 gene_list$Gene <- rownames(gene_list)
-gene_list %>% filter(padj<0.05) %>% arrange(padj)
+gene_list %>% filter(padj<significance_level) %>% arrange(padj)
 ```
 
 
@@ -473,19 +472,28 @@ gene_list %>% filter(padj<0.05) %>% arrange(padj)
 plotMA(res)
 ```
 
+```{r}
+ggplot(gene_list, aes(x=pvalue))+
+  geom_histogram()
+```
+
+```{r}
+ggplot(gene_list, aes(x=padj))+
+  geom_histogram()
+```
 
 ```{r}
 gene_list$significance <- NA
 for (gene in 1:nrow(gene_list)){
-  if (gene_list[gene,"log2FoldChange"]>=1 & gene_list[gene,"padj"]< 0.05){
+  if (gene_list[gene,"log2FoldChange"]>=1 & gene_list[gene,"padj"]< significance_level){
     gene_list[gene, "significance"] <- "Up"
   }  
   
-  else if (gene_list[gene,"log2FoldChange"]<=(-1) & gene_list[gene,"padj"]< 0.05){
+  else if (gene_list[gene,"log2FoldChange"]<=(-1) & gene_list[gene,"padj"]< significance_level){
     gene_list[gene, "significance"] <- "Down"
   } 
   
-  else if (abs(gene_list[gene,"log2FoldChange"])<1 | gene_list[gene,"padj"]>= 0.05){
+  else if (abs(gene_list[gene,"log2FoldChange"])<1 | gene_list[gene,"padj"]>= significance_level){
     gene_list[gene, "significance"] <- "Not significant"
   }
 }
@@ -593,7 +601,7 @@ temp_GO_dge_down
 Construct edgeR DGElist object
 ```{r}
 cts_edgeR <- cts
-inflammation_status <- as.factor(coldata$inflammation)
+inflammation_status <- as.factor(colData$inflammation)
 inflammation_status <- relevel(inflammation_status, "Non-Inflamed")
 
 dge <- DGEList(counts = cts_edgeR, group = inflammation_status)
@@ -639,15 +647,15 @@ gene_list_edgeR$Gene <- rownames(gene_list_edgeR)
 
 gene_list_edgeR$significance <- NA
 for (gene in 1:nrow(gene_list_edgeR)){
-  if (gene_list_edgeR[gene,"logFC"]>=1 & gene_list_edgeR[gene,"FDR"]< 0.05){
+  if (gene_list_edgeR[gene,"logFC"]>=1 & gene_list_edgeR[gene,"FDR"]< significance_level){
     gene_list_edgeR[gene, "significance"] <- "Up"
   }  
   
-  else if (gene_list_edgeR[gene,"logFC"]<=(-1) & gene_list_edgeR[gene,"FDR"]< 0.05){
+  else if (gene_list_edgeR[gene,"logFC"]<=(-1) & gene_list_edgeR[gene,"FDR"]< significance_level){
     gene_list_edgeR[gene, "significance"] <- "Down"
   } 
   
-  else if (abs(gene_list_edgeR[gene,"logFC"])<1 | gene_list_edgeR[gene,"FDR"]>= 0.05){
+  else if (abs(gene_list_edgeR[gene,"logFC"])<1 | gene_list_edgeR[gene,"FDR"]>= significance_level){
     gene_list_edgeR[gene, "significance"] <- "Not significant"
   }
 }
