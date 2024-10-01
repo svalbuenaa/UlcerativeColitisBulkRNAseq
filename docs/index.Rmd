@@ -17,12 +17,18 @@ knitr::opts_chunk$set(comment = NA)
 ```
 
 ```{css, echo= FALSE}
+/* Custom CSS to allow plots to scale */
+figure {
+    max-width: 100%;
+    overflow: visible;
+}
+
 pre {
     border: none !important;
     background-color: transparent !important;
     padding: 0 !important;
     margin: 0 !important;
-}
+}  
 ```
 # Generalities
 
@@ -41,8 +47,8 @@ if (!require("clusterProfiler")) BiocManager::install("clusterProfiler")
 if (!require("AnnotationDbi")) BiocManager::install("AnnotationDbi")
 if (!require("org.Hs.eg.db")) BiocManager::install("org.Hs.eg.db")
 if (!require("org.Hs.eg.db")) BiocManager::install("DESeq2")
+if (!require("ComplexHeatmap")) BiocManager::install("ComplexHeatmap")
 
-if (!require("edgeR")) BiocManager::install("edgeR")
 
 library(ggplot2)
 library(stringr)
@@ -55,7 +61,8 @@ library(org.Hs.eg.db)
 library(DESeq2)
 library(plotly)
 library(ggbreak) 
-library(edgeR)
+library(ComplexHeatmap)
+library(circlize)
 ```
 
 ```{r}
@@ -571,166 +578,79 @@ GO_dge_down_plot <- GO_dge_down_plot[1:10,]
 ```
 
 
-```{r}
+```{r, fig.width=7}
 ggplot(GO_dge_up_plot, aes(x=(-log10(`p.adjust`)), y=reorder(Description, (-log10(`p.adjust`)))))+
   geom_col(fill="red", alpha=0.5)+
-  geom_text(aes(x=4, y=reorder(Description, (-log10(`p.adjust`))), label = format(round((-log10(`p.adjust`)),digits=2), nsmall = 2)))+
+  geom_text(aes(x=6, y=reorder(Description, (-log10(`p.adjust`))), label = format(round((-log10(`p.adjust`)),digits=2), nsmall = 2)))+
   labs(title = "GO enrichment, upregulated genes", 
        y="",
-       x="-log10(p-adjust)")
+       x="-log10(p-adjust)")+
+  theme_minimal()
 ```
 
 
-```{r}
+```{r, fig.width=7}
 ggplot(GO_dge_down_plot, aes(x=(-log10(`p.adjust`)), y=reorder(Description, (-log10(`p.adjust`)))))+
   geom_col(fill="lightblue")+
   geom_text(aes(x=1, y=reorder(Description, (-log10(`p.adjust`))), label = format(round((-log10(`p.adjust`)),digits=2), nsmall = 2)))+
   labs(title = "GO enrichment, dowregulated genes", 
        y="",
-       x="-log10(p-adjust)")
+       x="-log10(p-adjust)")+
+  theme_minimal()
 ```
 
 
-# Differential expression analysis with edgeR
 
-Construct edgeR DGElist object
+
+### Heatmap top 50 DEGs
+
+**Based on p.adj**
+
 ```{r}
-cts_edgeR <- cts
-inflammation_status <- as.factor(colData$inflammation)
-inflammation_status <- relevel(inflammation_status, "Non-Inflamed")
-
-dge <- DGEList(counts = cts_edgeR, group = inflammation_status)
+gene_list_heatmap <- gene_list %>% arrange(padj)
+gene_list_heatmap <- gene_list_heatmap[1:50,]
+gene_list_heatmap <- gene_list_heatmap %>% arrange(desc(log2FoldChange))
+gene_list_heatmap
 ```
 
 
-Filter low-expressed genes
-```{r}
-keep <- filterByExpr(y=dge)
+Z-score norm
 
-dge <- dge[keep, , keep.lib.sizes=F]
-```
-
-Normalization
-```{r}
-dge <- calcNormFactors(dge)
-dge$samples
-```
-
-Estimate dispersion
-```{r}
-dge <- estimateDisp(y = dge)
+```{r, include=FALSE}
+rld <- rlog(dds, blind=FALSE)
 ```
 
 
 
 ```{r}
-diff_expr <- exactTest(dge)
-```
+genes_list_heatmap_norm_all <- as.data.frame(assay(rld))
+genes_list_heatmap_norm_all <- genes_list_heatmap_norm_all %>% filter(rownames(genes_list_heatmap_norm_all) %in% rownames(gene_list_heatmap))
 
-```{r}
-top_diff_expr <- topTags(diff_expr, n="Inf")
-```
+genes_list_heatmap_norm_all <- genes_list_heatmap_norm_all[match(rownames(gene_list_heatmap), rownames(genes_list_heatmap_norm_all)), rownames(colData %>% arrange(inflammation) %>% select(inflammation))]
 
-
-```{r}
-gene_list_edgeR <- as.data.frame(top_diff_expr)
-gene_list_edgeR
-```
-
-```{r}
-gene_list_edgeR$Gene <- rownames(gene_list_edgeR)
-
-gene_list_edgeR$significance <- NA
-for (gene in 1:nrow(gene_list_edgeR)){
-  if (gene_list_edgeR[gene,"logFC"]>=1 & gene_list_edgeR[gene,"FDR"]< significance_level){
-    gene_list_edgeR[gene, "significance"] <- "Up"
-  }  
-  
-  else if (gene_list_edgeR[gene,"logFC"]<=(-1) & gene_list_edgeR[gene,"FDR"]< significance_level){
-    gene_list_edgeR[gene, "significance"] <- "Down"
-  } 
-  
-  else if (abs(gene_list_edgeR[gene,"logFC"])<1 | gene_list_edgeR[gene,"FDR"]>= significance_level){
-    gene_list_edgeR[gene, "significance"] <- "Not significant"
-  }
-}
+genes_list_heatmap_norm_all
 ```
 
 
-
-
-```{r, message=FALSE, warning=FALSE, echo=FALSE}
-p1 <- suppressMessages(ggplot(gene_list_edgeR, aes(x=logFC, y=-log10(FDR), label=Gene, color=significance))+ 
-  geom_point(size=0.8) + 
-  ylim(0,62)+ 
-  theme_light()+ 
-  theme(
-        panel.border = element_blank())+ 
-  geom_vline(xintercept = -10, size=0.15)+ 
-  geom_vline(xintercept = 10, size=0.15)+ 
-  geom_hline(yintercept=0, size=0.15)+ 
-  geom_vline(xintercept=1, size=0.1, linetype = "dashed")+ 
-  geom_vline(xintercept=(-1), size=0.1, linetype = "dashed")+ 
-  geom_hline(yintercept=-log10(significance_level), size=0.1, linetype = "dashed")+ 
-  scale_color_manual(values = c("Up"="#b02428", "Not significant"="grey", "Down"="#6697ea"))+ 
-  labs(color = "Significance"))
-
-
-p1plotly <- ggplotly(p1) %>% layout(height = 500)
-
-subplot(p1plotly) %>% 
-  layout(margin=list(l=100, t=50, b=80),
-    title = list(text = "DE analysis Not-Inflamed vs Inflamed samples", x = 0.165, y = 0.95),
-    legend = list(y = 0.5, tracegroupgap = 0.5),
-    annotations = list(
-      list(
-        x = 0.5, 
-        y = -0.1, 
-        xref = 'paper', 
-        yref = 'paper', 
-        showarrow = FALSE, 
-        text = "log2FoldChange"
-      ),
-      list(
-        x = -0.1, 
-        y = 0.5, 
-        xref = 'paper', 
-        yref = 'paper', 
-        showarrow = FALSE, 
-        text = "-log10 FDR",
-        textangle = -90
-      )
-    )
-  )
-```
-
-
-### GO enrichment up and down-regulated genes
-```{r}
-# Get upregulated genes
-dge_edgeR_up <- gene_list_edgeR %>% filter(significance == "Up")
-
-# Get downregulated genes
-dge_edgeR_down <- gene_list_edgeR %>% filter(significance == "Down")
-```
-
-```{r}
-dge_edgeR_up <- enrichGO(gene = dge_edgeR_up$Gene, universe = gene_list_edgeR$Gene, OrgDb = "org.Hs.eg.db", keyType = "SYMBOL", ont = "BP")
-
-temp_GO_dge_edgeR_up <- as.data.frame(dge_edgeR_up)[,c("ID", "Description", "GeneRatio", "p.adjust")]
-temp_GO_dge_edgeR_up$Description <- strtrim(temp_GO_dge_edgeR_up$Description, 50)
-rownames(temp_GO_dge_edgeR_up) <- 1:nrow(temp_GO_dge_edgeR_up)
-temp_GO_dge_edgeR_up
-```
 
 
 ```{r}
-GO_dge_edgeR_down <- enrichGO(gene = dge_edgeR_down$Gene, universe = gene_list_edgeR$Gene, OrgDb = "org.Hs.eg.db", keyType = "SYMBOL", ont = "BP")
+mean_sd_non_inflamed_all <- as.data.frame(rowSds(as.matrix(genes_list_heatmap_norm_all), useNames = FALSE))
+colnames(mean_sd_non_inflamed_all) <- "sd"
+mean_sd_non_inflamed_all$mean <- rowMeans(as.matrix(genes_list_heatmap_norm_all))
 
-temp_GO_dge_edgeR_down <- as.data.frame(GO_dge_edgeR_down)[,c("ID", "Description", "GeneRatio", "p.adjust")]
-temp_GO_dge_edgeR_down$Description <- strtrim(temp_GO_dge_edgeR_down$Description, 50)
-rownames(temp_GO_dge_edgeR_down) <- 1:nrow(temp_GO_dge_edgeR_down)
-temp_GO_dge_edgeR_down
+genes_list_heatmap_norm_all <- (genes_list_heatmap_norm_all - mean_sd_non_inflamed_all$mean)/mean_sd_non_inflamed_all$sd
+
+genes_list_heatmap_norm_all
+```
+
+
+
+
+```{r}
+baseMean <- as.data.frame(gene_list_heatmap$baseMean)
+colnames(baseMean) <- "Mean\nexpr."
+rownames(baseMean) <- rownames(gene_list_heatmap)
 ```
 
 
@@ -738,13 +658,69 @@ temp_GO_dge_edgeR_down
 
 
 
+```{r warning=FALSE, fig.height=16, fig.width=19}
+col_padj <- colorRamp2(c(20,70), c("green", "magenta"))
+col_baseMean <- colorRamp2(c(0, (0.8*max(gene_list_heatmap$baseMean))), c("white", "brown"))
+
+col_names <- colnames(genes_list_heatmap_norm_all)
+
+# Define how to split them - first half as "Non-inflamed", second half as "Inflamed"
+n_cols <- length(col_names)
+half_point <- ceiling(n_cols / 2)
+
+height <- 740
+
+column_split <- factor(c(rep("Non-inflamed", half_point), rep("Inflamed", n_cols - half_point)),
+                       levels = c("Non-inflamed", "Inflamed"))
+
+h1 <- suppressMessages(Heatmap(genes_list_heatmap_norm_all,
+                            row_order = rownames(genes_list_heatmap_norm_all),
+                            column_order = colnames(genes_list_heatmap_norm_all),
+                            name = "Z-score\nNorm.\nexpr.",
+                            column_split=column_split,
+                            width = unit(1000, "points"),
+                            height = unit(height, "points"),
+                            column_names_gp = gpar(fontsize = 16),
+                            column_title_gp = gpar(fontsize = 20),
+                            heatmap_legend_param = list(
+                              title_gp = gpar(fontsize = 14),
+                              labels_gp = gpar(fontsize = 12),
+                              grid_width = unit(0.7, "cm"))))
+
+h2 <- suppressMessages(Heatmap((-log10(gene_list_heatmap$padj)),
+                               col=col_padj,
+                               name="-log10\n(padj)",
+                               column_names_gp = gpar(fontsize = 16),
+                               cell_fun = function(j, i, x, y, w, h, col) {
+                                  grid.text(as.matrix(format(round(-log10(gene_list_heatmap$padj), 1), nsmall = 1))[i, j], x = x, y = y, 
+                                    gp = gpar(fontsize = 16))},
+                               width = unit(80, "point"),
+                               height = unit(height, "point"),
+                            heatmap_legend_param = list(
+                              title_gp = gpar(fontsize = 14),
+                              labels_gp = gpar(fontsize = 12),
+                              grid_width = unit(0.7, "cm"))))
+
+h3 <- suppressMessages(Heatmap(baseMean,
+                               col=col_baseMean,
+                               name = colnames(baseMean),
+                               column_names_gp = gpar(fontsize = 16),
+                               cell_fun = function(j, i, x, y, w, h, col) {
+                                  grid.text(as.matrix(format(round(baseMean, 1), nsmall = 1))[i, j], x = x, y = y, 
+                                    gp = gpar(fontsize = 16))},
+                               row_names_side = "right",
+                               width = unit(80, "point"),
+                               height = unit(height, "point"),
+                               row_names_gp = gpar(fontsize = 16),
+                            heatmap_legend_param = list(
+                              title_gp = gpar(fontsize = 14),
+                              labels_gp = gpar(fontsize = 12),
+                              grid_width = unit(0.7, "cm"))))
 
 
 
 
+h_list <- h1+h2+h3
 
-
-
-
-
-
+draw(h_list, column_title="Top 50 DEG genes Non-inflamed vs inflamed", column_title_gp=gpar(fontsize =24))
+```
