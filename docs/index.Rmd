@@ -660,6 +660,7 @@ rownames(baseMean) <- rownames(gene_list_heatmap)
 
 ```{r warning=FALSE, fig.height=16, fig.width=19}
 col_padj <- colorRamp2(c(20,70), c("green", "magenta"))
+col_FoldChange <- colorRamp2(c(-4,4), c("#27699C", "#DB8400"))
 col_baseMean <- colorRamp2(c(0, (0.8*max(gene_list_heatmap$baseMean))), c("white", "brown"))
 
 col_names <- colnames(genes_list_heatmap_norm_all)
@@ -678,7 +679,7 @@ h1 <- suppressMessages(Heatmap(genes_list_heatmap_norm_all,
                             column_order = colnames(genes_list_heatmap_norm_all),
                             name = "Z-score\nNorm.\nexpr.",
                             column_split=column_split,
-                            width = unit(1000, "points"),
+                            width = unit(920, "points"),
                             height = unit(height, "points"),
                             column_names_gp = gpar(fontsize = 16),
                             column_title_gp = gpar(fontsize = 20),
@@ -687,7 +688,24 @@ h1 <- suppressMessages(Heatmap(genes_list_heatmap_norm_all,
                               labels_gp = gpar(fontsize = 12),
                               grid_width = unit(0.7, "cm"))))
 
-h2 <- suppressMessages(Heatmap((-log10(gene_list_heatmap$padj)),
+h2 <- suppressMessages(Heatmap(gene_list_heatmap$log2FoldChange,
+                               col=col_FoldChange,
+                               name="log2\nFoldChange",
+                               column_names_gp = gpar(fontsize = 16),
+                               cell_fun = function(j, i, x, y, w, h, col) {
+                                  grid.text(as.matrix(format(round(gene_list_heatmap$log2FoldChange, 1), nsmall = 1))[i, j], x = x, y = y, 
+                                    gp = gpar(fontsize = 16))},
+                               width = unit(80, "point"),
+                               height = unit(height, "point"),
+                            heatmap_legend_param = list(
+                              title_gp = gpar(fontsize = 14),
+                              labels_gp = gpar(fontsize = 12),
+                              grid_width = unit(0.7, "cm"))))
+
+
+
+
+h3 <- suppressMessages(Heatmap((-log10(gene_list_heatmap$padj)),
                                col=col_padj,
                                name="-log10\n(padj)",
                                column_names_gp = gpar(fontsize = 16),
@@ -701,7 +719,7 @@ h2 <- suppressMessages(Heatmap((-log10(gene_list_heatmap$padj)),
                               labels_gp = gpar(fontsize = 12),
                               grid_width = unit(0.7, "cm"))))
 
-h3 <- suppressMessages(Heatmap(baseMean,
+h4 <- suppressMessages(Heatmap(baseMean,
                                col=col_baseMean,
                                name = colnames(baseMean),
                                column_names_gp = gpar(fontsize = 16),
@@ -720,7 +738,7 @@ h3 <- suppressMessages(Heatmap(baseMean,
 
 
 
-h_list <- h1+h2+h3
+h_list <- h1+h2+h3+h4
 
 draw(h_list, column_title="Top 50 DEG genes Non-inflamed vs inflamed", column_title_gp=gpar(fontsize =24))
 ```
