@@ -742,3 +742,47 @@ h_list <- h1+h2+h3+h4
 
 draw(h_list, column_title="Top 50 DEG genes Non-inflamed vs inflamed", column_title_gp=gpar(fontsize =24))
 ```
+
+
+```{r}
+genes_list_norm <- as.data.frame(assay(rld))
+genes_list_norm <- genes_list_norm[, rownames(as.data.frame(colData) %>% arrange(inflammation))]
+t_genes_list_norm <- as.data.frame(t(genes_list_norm))
+t_genes_list_norm$Inflammation <- c(rep("Non-inflamed", 24), rep("Inflamed", 24))
+t_genes_list_norm$Inflammation <- relevel(as.factor(t_genes_list_norm$Inflammation), ref = "Non-inflamed")
+
+```
+
+
+
+### Plot single genes
+```{r}
+plotSingleGenes <- function(arg_gene){
+  # Accepts the name of a gene and plots normalized expression for all samples separating Non-inflamed vs inflamed
+  ggplot(t_genes_list_norm, aes(y=get(arg_gene), x = Inflammation, color=Inflammation))+
+    geom_boxplot()+
+    geom_jitter(width=0.2, alpha=0.5, color="black")+
+    labs(title=arg_gene,
+         x="Inflammation status",
+         y="Normalized expression")+
+    theme(plot.title = element_text(hjust = 0.5, size = 16),
+          axis.text = element_text(size = 12),
+          axis.title = element_text(size = 14),
+          aspect.ratio = 1.5,
+          panel.background = element_blank(),
+          axis.line = element_line(linewidth = 0.5))
+}
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
