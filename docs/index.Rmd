@@ -97,13 +97,14 @@ plot_CoV_mean <- function(arg_dataframe, arg_x, arg_y,
 project_dir <- file.path("Z:", "My Drive", "Bioinformatics project bulk-RNAseq")
 ```
 
-```{r}
+```{r, include=FALSE}
 # Import dataset with gene counts
 genes_list <- read.delim(file.path(project_dir, "GSE107593_raw_reads_BCHRNAseq.txt"), check.names=F)
+genes_list
 ```
 
 ## Raw counts matrix
-```{r}
+```{r, include=FALSE}
 colnames(genes_list) <- c("ENSG_symbol", colnames(genes_list[2:length(colnames(genes_list))]))
 genes_list[,c(1,3,10:ncol(genes_list))]
 ```
@@ -126,7 +127,7 @@ for (el in patient_ids){
 }
 ```
 
-### Area from which samples were obtained
+### Area from which samples were obtained {.unlisted .unnumbered}
 ```{r}
 # Obtain sampling locations
 location <- unique(str_replace(metadata_matrix_2[,11], "location: ",""))
@@ -136,8 +137,10 @@ for (el in sort(location)){
 }
 ```
 
+
 ## Lognormalization of counts
-```{r}
+
+```{r include=FALSE}
 # Create df for normalization:
 genes_list_lognorm <- data.frame(matrix(NA, nrow = nrow(genes_list), ncol = ncol(genes_list)))
 
@@ -293,6 +296,15 @@ for(row_scores in 1:nrow(pca_scores_lognorm)){
 }
 ```
 
+```{r}
+colData <- pca_scores_lognorm[,c(11, 13:15)]
+colData$inflammation <- factor(colData$inflammation, levels = c("Non-Inflamed", "Inflamed"))
+colData$location <- factor(colData$location)
+colData$hospital <- factor(colData$hospital)
+
+colData
+```
+
 ### PCA Scores
 ```{r out.width="100%"}
 p1 <- ggplot(pca_scores_lognorm, aes(x=PC1, y=PC2, colour = inflammation)) +
@@ -386,28 +398,18 @@ pca_rotations$gene_name <- genes_list$gene_name
 pca_lognorm_rotations$gene_name <- genes_list$gene_name
 ```
 
+
 # Differential expression analysis
 
-```{r}
+```{r, include=FALSE}
 cts <- as.matrix(genes_list[,c(10:ncol(genes_list))])
 rownames(cts) <- genes_list[[3]]
 
-colData <- pca_scores_lognorm[,c(11, 13:15)]
-colData$inflammation <- factor(colData$inflammation, levels = c("Non-Inflamed", "Inflamed"))
-colData$location <- factor(colData$location)
-colData$hospital <- factor(colData$hospital)
 
 cts <- cts[, rownames(colData)]
 
 as.data.frame(cts)
 ```
-
-
-```{r}
-colData
-```
-
-
 
 
 
@@ -547,7 +549,7 @@ dge_up <- gene_list %>% filter(significance == "Up")
 dge_down <- gene_list %>% filter(significance == "Down")
 ```
 
-```{r}
+```{r include=FALSE}
 GO_dge_up <- enrichGO(gene = dge_up$Gene, universe = gene_list$Gene, OrgDb = "org.Hs.eg.db", keyType = "SYMBOL", ont = "BP")
 
 temp_GO_dge_up <- as.data.frame(GO_dge_up)[,c("ID", "Description", "GeneRatio", "p.adjust")]
@@ -557,7 +559,7 @@ temp_GO_dge_up
 ```
 
 
-```{r}
+```{r, include=FALSE}
 GO_dge_down <- enrichGO(gene = dge_down$Gene, universe = gene_list$Gene, OrgDb = "org.Hs.eg.db", keyType = "SYMBOL", ont = "BP")
 
 temp_GO_dge_down <- as.data.frame(GO_dge_down)[,c("ID", "Description", "GeneRatio", "p.adjust")]
@@ -610,7 +612,7 @@ ggplot(GO_dge_down_plot, aes(x=(-log10(`p.adjust`)), y=reorder(Description, (-lo
 gene_list_heatmap <- gene_list %>% arrange(padj)
 gene_list_heatmap <- gene_list_heatmap[1:50,]
 gene_list_heatmap <- gene_list_heatmap %>% arrange(desc(log2FoldChange))
-gene_list_heatmap
+gene_list_heatmap[,c("baseMean", "log2FoldChange", "padj", "significance")]
 ```
 
 
@@ -622,7 +624,7 @@ rld <- rlog(dds, blind=FALSE)
 
 
 
-```{r}
+```{r, include=FALSE}
 genes_list_heatmap_norm_all <- as.data.frame(assay(rld))
 genes_list_heatmap_norm_all <- genes_list_heatmap_norm_all %>% filter(rownames(genes_list_heatmap_norm_all) %in% rownames(gene_list_heatmap))
 
@@ -634,7 +636,7 @@ genes_list_heatmap_norm_all
 
 
 
-```{r}
+```{r, include=FALSE}
 mean_sd_non_inflamed_all <- as.data.frame(rowSds(as.matrix(genes_list_heatmap_norm_all), useNames = FALSE))
 colnames(mean_sd_non_inflamed_all) <- "sd"
 mean_sd_non_inflamed_all$mean <- rowMeans(as.matrix(genes_list_heatmap_norm_all))
@@ -750,7 +752,6 @@ genes_list_norm <- genes_list_norm[, rownames(as.data.frame(colData) %>% arrange
 t_genes_list_norm <- as.data.frame(t(genes_list_norm))
 t_genes_list_norm$Inflammation <- c(rep("Non-inflamed", 24), rep("Inflamed", 24))
 t_genes_list_norm$Inflammation <- relevel(as.factor(t_genes_list_norm$Inflammation), ref = "Non-inflamed")
-
 ```
 
 
@@ -762,6 +763,7 @@ plotSingleGenes <- function(arg_gene){
   ggplot(t_genes_list_norm, aes(y=get(arg_gene), x = Inflammation, color=Inflammation))+
     geom_boxplot(outliers = FALSE)+
     geom_jitter(width=0.2, alpha=0.5, color="black")+
+    scale_y_continuous(limits = c(0, 1.2*max(t_genes_list_norm[[arg_gene]])), expand = expansion(add = 0))+
     labs(title=arg_gene,
          x="Inflammation status",
          y="Normalized expression")+
@@ -772,6 +774,8 @@ plotSingleGenes <- function(arg_gene){
           panel.background = element_blank(),
           axis.line = element_line(linewidth = 0.5))
 }
+
+plot
 ```
 
 
@@ -782,13 +786,10 @@ for(gene in rownames(gene_list_heatmap)){
 }
 ```
 
-```{r}
-gene_list_heatmap
-```
 
 
-```{r fig.width=15}
-wrap_plots(plotsSingleGenes[1:12])
+```{r fig.width=21}
+wrap_plots(plotsSingleGenes[1:12])+ plot_layout(guides = "collect")
 ```
 
 
