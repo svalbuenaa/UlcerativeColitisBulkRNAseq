@@ -760,7 +760,7 @@ t_genes_list_norm$Inflammation <- relevel(as.factor(t_genes_list_norm$Inflammati
 plotSingleGenes <- function(arg_gene){
   # Accepts the name of a gene and plots normalized expression for all samples separating Non-inflamed vs inflamed
   ggplot(t_genes_list_norm, aes(y=get(arg_gene), x = Inflammation, color=Inflammation))+
-    geom_boxplot()+
+    geom_boxplot(outliers = FALSE)+
     geom_jitter(width=0.2, alpha=0.5, color="black")+
     labs(title=arg_gene,
          x="Inflammation status",
@@ -775,6 +775,21 @@ plotSingleGenes <- function(arg_gene){
 ```
 
 
+```{r}
+plotsSingleGenes <- list()
+for(gene in rownames(gene_list_heatmap)){
+  plotsSingleGenes[[gene]] <- plotSingleGenes(gene)
+}
+```
+
+```{r}
+gene_list_heatmap
+```
+
+
+```{r fig.width=15}
+wrap_plots(plotsSingleGenes[1:12])
+```
 
 
 
