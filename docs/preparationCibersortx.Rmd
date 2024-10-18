@@ -1,0 +1,90 @@
+---
+---
+title: "Ulcerative colitis bulk-RNAseq"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    toc: yes
+    toc_depth: 5
+    toc_float:
+      collapsed: false   
+    code_folding: hide
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(comment = NA)
+```
+
+```{css, echo= FALSE}
+/* Custom CSS to allow plots to scale */
+figure {
+    max-width: 100%;
+    overflow: visible;
+}
+
+pre {
+    border: none !important;
+    background-color: transparent !important;
+    padding: 0 !important;
+    margin: 0 !important;
+}  
+```
+## Generalities
+
+All code associated to this page can be found here (https://github.com/svalbuenaa/UlcerativeColitisBulkRNAseq) 
+
+
+```{r}
+# Set a file path
+project_dir <- file.path("Z:", "My Drive", "Bioinformatics project bulk-RNAseq")
+```
+
+# Preparation of mixture file
+```{r, include=FALSE}
+# Import dataset with gene counts
+genes_list <- read.delim(file.path(project_dir, "GSE107593_raw_reads_BCHRNAseq.txt"), check.names=F)
+genes_list
+```
+
+## Raw counts matrix  {.unlisted .unnumbered}
+```{r, include=FALSE}
+colnames(genes_list) <- c("ENSG_symbol", colnames(genes_list[2:length(colnames(genes_list))]))
+genes_list[,c(1,3,10:ncol(genes_list))]
+```
+
+
+```{r}
+# Extract relevant columns from the gene expression matrix, normalize data and format for CIBERSORTx
+genes_list_cibersortx <- genes_list[,c(1,3,9:ncol(genes_list))]
+
+# Extract gene lengths (for data normalization)
+gene_length <- genes_list_cibersortx[, 3]
+gene_length_kb <- gene_length / 1000
+
+# Extract gene counts
+counts <- genes_list_cibersortx[, c(-1, -2, -3)]
+
+# Normalize counts by gene length
+norm_counts <- counts / gene_length_kb
+
+# Calculate scaling factors for TPM normalization
+scaling_factors <- colSums(norm_counts) / 1e6
+
+# Calculate TPM-normalized counts
+gene_list_tpm <- sweep(norm_counts, 2, scaling_factors, "/")
+
+# Bind gene names to TPM-normalized counts
+gene_list_tpm <- cbind(genes_list_cibersortx$gene_name, gene_list_tpm)
+colnames(gene_list_tpm) <- c("Gene", colnames(gene_list_tpm[2:length(colnames(gene_list_tpm))]))
+
+# Save
+write.table(gene_list_tpm, file.path(project_dir, "Mixture_file_ready.txt"), sep = "\t", row.names = FALSE, quote = FALSE)
+```
+
+
+
+
+
+
