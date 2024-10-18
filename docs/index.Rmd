@@ -30,7 +30,7 @@ pre {
     margin: 0 !important;
 }  
 ```
-# Generalities
+## Generalities
 
 All code associated to this page can be found here (https://github.com/svalbuenaa/UlcerativeColitisBulkRNAseq) 
 ```{r message=FALSE, warning=FALSE}
@@ -92,7 +92,7 @@ plot_CoV_mean <- function(arg_dataframe, arg_x, arg_y,
 }
 ```
 
-```{r}
+```{r, include=FALSE}
 # Set a file path
 project_dir <- file.path("Z:", "My Drive", "Bioinformatics project bulk-RNAseq")
 ```
@@ -103,16 +103,16 @@ genes_list <- read.delim(file.path(project_dir, "GSE107593_raw_reads_BCHRNAseq.t
 genes_list
 ```
 
-## Raw counts matrix
+## Raw counts matrix  {.unlisted .unnumbered}
 ```{r, include=FALSE}
 colnames(genes_list) <- c("ENSG_symbol", colnames(genes_list[2:length(colnames(genes_list))]))
 genes_list[,c(1,3,10:ncol(genes_list))]
 ```
 
 
-## Obtaining metadata information
+## Sample metadata {.unlisted .unnumbered}
 
-### Patient IDs
+### Patient IDs  {.unlisted .unnumbered}
 ```{r}
 # Read GSE107593_series_matrix.txt
 metadata_matrix <- read.delim(file.path(project_dir, "Dataset copy, untouched", "GSE107593_series_matrix.txt"), check.names=F, skip = 25)
@@ -138,7 +138,7 @@ for (el in sort(location)){
 ```
 
 
-## Lognormalization of counts
+## Lognormalization of counts {.unlisted .unnumbered}
 
 ```{r include=FALSE}
 # Create df for normalization:
@@ -159,8 +159,8 @@ for (i in 10:ncol(genes_list)) {
 genes_list_lognorm[,c(1,3,10:ncol(genes_list))]
 ```
 
-# Most variable genes
-## Mean vs CoV for all genes
+### Most variable genes
+#### Mean vs CoV for all genes {.unlisted .unnumbered}
 ```{r, warning=FALSE}
 df_mean_vs_CoV <- genes_list_lognorm[,10:ncol(genes_list)]
 stats_ <- CoV_mean(df_mean_vs_CoV)
@@ -171,7 +171,7 @@ p1 <- plot_CoV_mean(stats_, arg_x = "Mean_expression", arg_y = "CoV", arg_lab_ti
 p1
 ```
 
-## Mean vs CoV for most variable genes
+## Mean vs CoV for most variable genes {.unlisted .unnumbered}
 ```{r}
 most_variable_genes <- (stats_ %>% arrange(desc(CoV)))[1:500,]
 p2 <- plot_CoV_mean(most_variable_genes, arg_x = "Mean_expression", arg_y = "CoV", arg_lab_title = "Mean vs CoV, all samples, 500 most variable genes", arg_lab_x = "Mean expression across samples", arg_lab_y = "Coefficient of Variation")
@@ -185,7 +185,7 @@ p1plotly
 
 ## PCA with all genes
 
-### Scree plot
+### Scree plot {.unlisted .unnumbered}
 ```{r out.width="100%"}
 # Create dataframe for PCA of lognormalized samples
 genes_list_lognorm_for_pca <- t(genes_list_lognorm[,10:ncol(genes_list_lognorm)])
@@ -305,7 +305,7 @@ colData$hospital <- factor(colData$hospital)
 colData
 ```
 
-### PCA Scores
+### PCA Scores {.unlisted .unnumbered}
 ```{r out.width="100%"}
 p1 <- ggplot(pca_scores_lognorm, aes(x=PC1, y=PC2, colour = inflammation)) +
   geom_point(size=2)+
@@ -361,7 +361,7 @@ pca_scores_lognorm_most_var_metrics$hospital <- pca_scores_lognorm$hospital
 ```
 
 
-### PCA Scores
+### PCA Scores {.unlisted .unnumbered}
 ```{r out.width="100%"}
 p1 <- ggplot(pca_scores_lognorm_most_var_metrics, aes(x=PC1, y=PC2, colour = inflammation)) +
   geom_point(size=2)+
@@ -793,6 +793,9 @@ wrap_plots(plotsSingleGenes[1:12])+ plot_layout(guides = "collect")
 ```
 
 
+```{r}
+plotSingleGenes("TGFB2")
+```
 
 
 
