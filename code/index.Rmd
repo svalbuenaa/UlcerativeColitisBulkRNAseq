@@ -6,7 +6,7 @@ output:
     toc: yes
     toc_depth: 5
     toc_float:
-      collapsed: false   
+      collapsed: true   
     code_folding: hide
     df_print: paged
 ---

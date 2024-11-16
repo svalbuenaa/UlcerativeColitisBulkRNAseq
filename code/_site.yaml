@@ -1,0 +1,21 @@
+name: Ulcerative colitis
+output_dir: ../docs
+navbar:
+  title: Ulcerative colitis RNAseq
+  left:
+  - text: Home
+    href: index.html
+  - text: Content
+    menu:
+    - text: Bulk-RNAseq
+      href: index.html
+  right:
+  - icon: fa-github
+    text: Source code
+    href: https://github.com/svalbuenaa/UlcerativeColitisBulkRNAseq/tree/main
+output:
+  workflowr::wflow_html:
+    toc: yes
+    toc_float: yes
+    theme: flatly
+    highlight: textmate
