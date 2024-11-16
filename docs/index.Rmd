@@ -30,15 +30,19 @@ pre {
     margin: 0 !important;
 }  
 ```
-## Introduction
+## Introduction  
 
-`All code associated to this page can be found `[`here`](https://github.com/svalbuenaa/UlcerativeColitisBulkRNAseq)
+`All code associated to this page can be found `[`here`](https://github.com/svalbuenaa/UlcerativeColitisBulkRNAseq)  
 
-*Ulcerative colitis (UC)* is one of the two main forms of *Inflammatory bowel disease*, a chronic inflammatory condition where the colon and rectum become inflammed. UC is characterized by the presence of small ulcers  in the lining of the colon´s lining, as well as a variety of [symptoms](https://www.nhs.uk/conditions/ulcerative-colitis/), including abdominal pain, diarrhea, or weight loss.
+*Ulcerative colitis (UC)* is one of the two main forms of *Inflammatory bowel disease*, a chronic inflammatory condition where the colon and rectum become inflamed. UC is characterized by the presence of small ulcers  in the lining of the colon´s lining, as well as a variety of [symptoms](https://www.nhs.uk/conditions/ulcerative-colitis/), including abdominal pain, diarrhea, or weight loss.  
 
-As a disease associated with immune cell responses, UC is characterized by a complex de-regulation of innate and adaptive immune cell activity, that includes as main features the overactivation of neutrophiles and a Th2-like profile (e.g. see [here](https://www.mdpi.com/2077-0383/11/2/400)).
+As a disease associated with immune cell responses, UC is characterized by a complex de-regulation of innate and adaptive immune cell activity, that includes as main features the overactivation of neutrophils and a Th2-like profile (e.g. see [here](https://www.mdpi.com/2077-0383/11/2/400)).  
 
-Whereas an important corpus of data has been collected about the pathology of UC immune responses, key questions, such as the interaction between the gut microbiota and the immune cells, or whether disfunctions in the epithelial barrier are a cause or a consequence of altered immune responses, remain unanswered. Transcriptomic analyses of single cells or whole pieces of tissue have helped to clarify these issues (examples can be found here or here).  
+Whereas an important corpus of data has been collected about the pathology of UC immune responses, key questions, such as the interaction between the gut microbiota and the immune cells, or whether dysfunctions in the epithelial barrier are a cause or a consequence of altered immune responses, remain unanswered.  
+
+Transcriptomic analyses of single cells or whole pieces of tissue have helped to clarify these questions (e.g. see [here](https://academic.oup.com/ibdjournal/article/27/1/94/5823961) or [here](https://www.gastrojournal.org/article/S0016-5085(20)30658-2/fulltext)). Interestingly, most of these analyses use samples from healthy people as controls, comparing their transcriptomic signatures with those obtained from inflamed tissue in UC patients. However, less attention has been given to alternative study designs, such as using non-inflamed tissue from the same UC patients as a control for the gene expression in inflamed tissue. These alternative approaches might offer potential advantages, for example allowing the evaluation of the relative abundance of specific immune cell types or the evaluation of expression changes in genes related to the integrity of the epithelial barrier. 
+
+In this work, I explore these potential advantages by analyzing a bulk-RNAseq performed over non-inflamed as well as inflamed samples obtained from UC patients. The RNAseq was performed by the group of William Gordon and the counts can be found in the Gene Expression Omnibus Series [GSE107593](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE107593).
 
 
 ```{r message=FALSE, warning=FALSE}
