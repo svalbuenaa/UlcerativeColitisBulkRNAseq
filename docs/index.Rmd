@@ -30,9 +30,17 @@ pre {
     margin: 0 !important;
 }  
 ```
-## Generalities
+## Introduction
 
-All code associated to this page can be found here (https://github.com/svalbuenaa/UlcerativeColitisBulkRNAseq) 
+`All code associated to this page can be found `[`here`](https://github.com/svalbuenaa/UlcerativeColitisBulkRNAseq)
+
+*Ulcerative colitis (UC)* is one of the two main forms of *Inflammatory bowel disease*, a chronic inflammatory condition where the colon and rectum become inflammed. UC is characterized by the presence of small ulcers  in the lining of the colon´s lining, as well as a variety of [symptoms](https://www.nhs.uk/conditions/ulcerative-colitis/), including abdominal pain, diarrhea, or weight loss.
+
+As a disease associated with immune cell responses, UC is characterized by a complex de-regulation of innate and adaptive immune cell activity, that includes as main features the overactivation of neutrophiles and a Th2-like profile (e.g. see [here](https://www.mdpi.com/2077-0383/11/2/400)).
+
+Whereas an important corpus of data has been collected about the pathology of UC immune responses, key questions, such as the interaction between the gut microbiota and the immune cells, or whether disfunctions in the epithelial barrier are a cause or a consequence of altered immune responses, remain unanswered. Transcriptomic analyses of single cells or whole pieces of tissue have helped to clarify these issues (examples can be found here or here).  
+
+
 ```{r message=FALSE, warning=FALSE}
 if (!require("ggplot2")) install.packages("ggplot2")
 if (!require("stringr")) install.packages("stringr")
