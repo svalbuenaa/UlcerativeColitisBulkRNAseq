@@ -115,14 +115,22 @@ genes_list <- read.delim(file.path(project_dir, "GSE107593_raw_reads_BCHRNAseq.t
 genes_list
 ```
 
-## Raw counts matrix  {.unlisted .unnumbered}
-```{r, include=FALSE}
+### Raw counts matrix {.unlisted .unnumbered}
+
+This is the count matrix with the relevant information. It includes **gene symbols and names** (columns 1 and 2) as well as the **corresponding expression in the 48 samples** (columns 3 and subsequent)
+
+```{r}
 colnames(genes_list) <- c("ENSG_symbol", colnames(genes_list[2:length(colnames(genes_list))]))
 genes_list[,c(1,3,10:ncol(genes_list))]
 ```
 
 
-## Sample metadata {.unlisted .unnumbered}
+### Study design (samples and individuals) {.unlisted .unnumbered}
+
+For each individual, 4 samples were obtained, 2 of them from an inflamed area and 2 from a non-inflamed area. Each sample was obtained at one out of 6 possible areas: 4 in the colon (ascending, descending, sigmoid or transverse), the rectum, or the whole large intestine.  
+
+![](../assets/Study_design.jpg)
+
 
 ### Patient IDs  {.unlisted .unnumbered}
 ```{r}
