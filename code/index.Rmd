@@ -50,6 +50,7 @@ if (!require("ggplot2")) install.packages("ggplot2")
 if (!require("stringr")) install.packages("stringr")
 if (!require("ggrepel")) install.packages("ggrepel")
 if (!require("dplyr")) install.packages("dplyr")
+if (!require("tidyr")) install.packages("tidyr")
 if (!require("patchwork")) install.packages("patchwork")
 if (!require("BiocManager")) install.packages("BiocManager")
 if (!require("ggbreak")) install.packages("ggbreak")
@@ -66,6 +67,7 @@ library(ggplot2)
 library(stringr)
 library(ggrepel)
 library(dplyr)
+library(tidyr)
 library(patchwork)
 library(clusterProfiler)
 library(AnnotationDbi)
@@ -819,6 +821,24 @@ plotSingleGenes("TGFB2")
 
 
 
+# Imputing Immune Cell fractions
+
+```{r, fig.height=10, fig.width=14}
+imputed_cibersortx <- read.csv(file.path(project_dir, "CIBERSORTx_UC_Results.csv"))
+imputed_cibersortx <- imputed_cibersortx[,1:(ncol(imputed_cibersortx)-3)]
+colnames(imputed_cibersortx) <- c("Sample", colnames(imputed_cibersortx[2:ncol(imputed_cibersortx)]))
+
+imputed_cibersortx_long <- pivot_longer(imputed_cibersortx, cols = colnames(imputed_cibersortx[2:ncol(imputed_cibersortx)]), names_to = "Cell_Type", values_to = "Relative_Fraction")
+
+ggplot(imputed_cibersortx_long, aes(x = Sample, y = Relative_Fraction, fill = Cell_Type))+
+  geom_bar(position="stack", stat="identity")+ 
+  labs(title = "Imputed cell fractions with Cibersortx",
+       y = "Relative Fraction")+
+  scale_y_continuous(expand = c(0, 0))+
+  theme_light()+
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=0))
+```
 
 
 
