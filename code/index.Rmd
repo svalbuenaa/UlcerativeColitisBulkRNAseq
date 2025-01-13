@@ -824,21 +824,70 @@ plotSingleGenes("TGFB2")
 # Imputing Immune Cell fractions
 
 ```{r, fig.height=10, fig.width=14}
+color_scale_cibersortx <- c(
+  "Neutrophils" = "black",
+  "Eosinophils" = "#878b85",
+  "Mast.cells.activated" = "#bec2bb",
+  "Mast.cells.resting" = "#b8beb6",
+  "Dendritic.cells.activated" = "#eeeeec",
+  "Dendritic.cells.resting" = "#bd0000",
+  "Macrophages.M2" = "#eb0000",
+  "Macrophages.M1" = "#ff0000",
+  "Macrophages.M0" = "#82427b",
+  "Monocytes" = "#bd72a7",
+  "NK.cells.activated" = "#163c89",
+  "NK.cells.resting" = "#6399d1",
+  "T.cells.gamma.delta" = "#00a810",
+  "T.cells.regulatory..Tregs." = "#00e51f",
+  "T.cells.follicular.helper" = "#1bf538",
+  "T.cells.CD4.memory.activated" = "#d17d00",
+  "T.cells.CD4.memory.resting" = "#f5be65",
+  "T.cells.CD4.naive" = "#e75100",
+  "T.cells.CD8" = "#ffb11a",
+  "Plasma.cells" = "#cba600",
+  "B.cells.memory" = "#f4d800",
+  "B.cells.naive" = "#fcf53f"
+)
+
 imputed_cibersortx <- read.csv(file.path(project_dir, "CIBERSORTx_UC_Results.csv"))
 imputed_cibersortx <- imputed_cibersortx[,1:(ncol(imputed_cibersortx)-3)]
+rownames(imputed_cibersortx) <- imputed_cibersortx$Mixture
+imputed_cibersortx <- imputed_cibersortx[(arrange(pca_scores_lognorm, desc(inflammation)) %>% select(sample))[[1]],]
 colnames(imputed_cibersortx) <- c("Sample", colnames(imputed_cibersortx[2:ncol(imputed_cibersortx)]))
 
+
 imputed_cibersortx_long <- pivot_longer(imputed_cibersortx, cols = colnames(imputed_cibersortx[2:ncol(imputed_cibersortx)]), names_to = "Cell_Type", values_to = "Relative_Fraction")
+imputed_cibersortx_long$Cell_Type <- factor(imputed_cibersortx_long$Cell_Type, levels = names(color_scale_cibersortx))
+imputed_cibersortx_long$Sample <- factor(imputed_cibersortx_long$Sample, levels = (arrange(pca_scores_lognorm, desc(inflammation)) %>% select(sample))[[1]])
+
+text_1 <- data.frame(matrix(nrow = 1, ncol = 3))
+colnames(text_1) <- c("x", "Cell_Type", "text")
+text_1[,1] <- 12
+text_1[,2] <- 2
+text_1[,3] <- "Non-inflamed"
 
 ggplot(imputed_cibersortx_long, aes(x = Sample, y = Relative_Fraction, fill = Cell_Type))+
   geom_bar(position="stack", stat="identity")+ 
-  labs(title = "Imputed cell fractions with Cibersortx",
-       y = "Relative Fraction")+
-  scale_y_continuous(expand = c(0, 0))+
+  annotate(geom = "text", x=12, y=1.02, label="Non-inflamed samples")+
+  annotate(geom = "text", x=36, y=1.02, label="Inflamed samples")+
+  annotate("segment", x = 0.5, xend = 24.4, y = 1.008, yend = 1.008, size = 0.75, color = "black") +
+  annotate("segment", x = 24.6, xend = 48.5, y = 1.008, yend = 1.008, size = 0.75, color = "black") +
+    annotate("segment", x = 0.5, xend = 24.4, y = -0.008, yend = -0.008, size = 0.15, color = "black") +
+  annotate("segment", x = 24.6, xend = 48.5, y = -0.008, yend = -0.008, size = 0.15, color = "black") +
+  annotate("segment", x = 0, xend = 0, y = 0, yend = 1, size = 0.05, color = "grey") +
+  labs(title = "Imputed cell fractions",
+       y = "Relative Fraction",
+       fill = "Cell type")+
+  scale_y_continuous(expand = c(0.01, 0))+
+  scale_fill_manual(labels = str_replace_all(names(color_scale_cibersortx), "\\.", " "), values = color_scale_cibersortx)+
+  guides(fill = guide_legend(ncol = 1))+
   theme_light()+
   theme(plot.title = element_text(hjust = 0.5),
-        axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=0))
+        axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=0),
+        panel.grid.major = element_blank(),
+        panel.border = element_blank())
 ```
+
 
 
 
