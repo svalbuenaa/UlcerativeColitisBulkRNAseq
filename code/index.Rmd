@@ -920,3 +920,14 @@ for(cellType in names(color_scale_cibersortx)){
 plotsImputedCellFractions[c("Neutrophils", "T.cells.CD4.memory.activated", "Dendritic.cells.activated", "Macrophages.M0")]
 ```
 
+```{r, warning=FALSE}
+plotsImputedCellFractions[c("T.cells.CD8", "T.cells.regulatory..Tregs.", "Dendritic.cells.resting", "Macrophages.M2")]
+```
+
+
+
+```{r, warning=FALSE}
+wrap_plots(plotsImputedCellFractions[c("T.cells.CD8", "T.cells.regulatory..Tregs.", "Dendritic.cells.resting", "Macrophages.M2")], ncol = 4)
+```
+
+
