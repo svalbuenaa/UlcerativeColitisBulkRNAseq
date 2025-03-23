@@ -788,13 +788,12 @@ t_genes_list_norm$Location <- as.factor(location_matrix[rownames(t_genes_list_no
 ```{r}
 plotSingleGenes <- function(arg_gene){
   # Accepts the name of a gene and plots normalized expression for all samples separating Non-inflamed vs inflamed
-  ggplot(t_genes_list_norm, aes(y=get(arg_gene), x = Inflammation, color=Inflammation))+
+  ggplot(t_genes_list_norm, aes(y=get(arg_gene), x = Location, fill=Inflammation))+
     geom_boxplot(outliers = FALSE)+
-    geom_jitter(width=0.2, alpha=0.5, aes(color=Location))+
+    geom_jitter(width=0.2, alpha=0.5, color="black")+
     scale_y_continuous(limits = c(0, 1.2*max(t_genes_list_norm[[arg_gene]])), expand = expansion(add = 0))+
-    scale_color_manual(values = c("Non-Inflamed" = "#00BFC4",
-                                  "Inflamed" = "#F8766D",
-                                  "Ascending" = "green"))+
+    scale_fill_manual(values = c("Non-Inflamed" = "#00BFC4",
+                                  "Inflamed" = "#F8766D"))+
     labs(title=arg_gene,
          x="Inflammation status",
          y="Normalized expression")+
