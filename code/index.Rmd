@@ -774,12 +774,14 @@ genes_list_norm <- genes_list_norm[, rownames(as.data.frame(colData) %>% arrange
 t_genes_list_norm <- as.data.frame(t(genes_list_norm))
 t_genes_list_norm$Inflammation <- c(rep("Non-Inflamed", 24), rep("Inflamed", 24))
 t_genes_list_norm$Inflammation <- relevel(as.factor(t_genes_list_norm$Inflammation), ref = "Non-Inflamed")
-location_matrix <- metadata_matrix_2[,c(7,11)]
-location_matrix$`!Sample_source_name_ch1` <- str_replace_all(location_matrix$`!Sample_source_name_ch1`, "Colon_", "")
-location_matrix$`!Sample_characteristics_ch1` <- str_replace_all(location_matrix$`!Sample_characteristics_ch1`, "location: ", "")
-rownames(location_matrix) <- location_matrix$`!Sample_source_name_ch1`
-colnames(location_matrix) <- c("Sample", "Location")
-t_genes_list_norm$Location <- as.factor(location_matrix[rownames(t_genes_list_norm),"Location"])
+metadata_matrix_support <- metadata_matrix_2[,c(7,11, 12)]
+metadata_matrix_support$`!Sample_source_name_ch1` <- str_replace_all(metadata_matrix_support$`!Sample_source_name_ch1`, "Colon_", "")
+metadata_matrix_support$`!Sample_characteristics_ch1` <- str_replace_all(metadata_matrix_support$`!Sample_characteristics_ch1`, "location: ", "")
+metadata_matrix_support$`!Sample_characteristics_ch1.1` <- str_replace_all(metadata_matrix_support$`!Sample_characteristics_ch1.1`, "subject: ", "")
+rownames(metadata_matrix_support) <- metadata_matrix_support$`!Sample_source_name_ch1`
+colnames(metadata_matrix_support) <- c("Sample", "Location", "Patient")
+t_genes_list_norm$Location <- as.factor(metadata_matrix_support[rownames(t_genes_list_norm),"Location"])
+t_genes_list_norm$Patient <- as.factor(metadata_matrix_support[rownames(t_genes_list_norm),"Patient"])
 ```
 
 
@@ -788,22 +790,25 @@ t_genes_list_norm$Location <- as.factor(location_matrix[rownames(t_genes_list_no
 ```{r}
 plotSingleGenes <- function(arg_gene){
   # Accepts the name of a gene and plots normalized expression for all samples separating Non-inflamed vs inflamed
-  ggplot(t_genes_list_norm, aes(y=get(arg_gene), x = Location, fill=Inflammation))+
+  ggplot(t_genes_list_norm, aes(y=get(arg_gene), x = Patient, fill=Inflammation))+
     geom_boxplot(outliers = FALSE)+
     geom_jitter(width=0.2, alpha=0.5, color="black")+
     scale_y_continuous(limits = c(0, 1.2*max(t_genes_list_norm[[arg_gene]])), expand = expansion(add = 0))+
     scale_fill_manual(values = c("Non-Inflamed" = "#00BFC4",
                                   "Inflamed" = "#F8766D"))+
     labs(title=arg_gene,
-         x="Inflammation status",
+         x="Patient",
          y="Normalized expression")+
     theme(plot.title = element_text(hjust = 0.5, size = 16),
           axis.text = element_text(size = 12),
           axis.title = element_text(size = 14),
-          aspect.ratio = 1.5,
+          axis.text.x = element_text(angle = 90, hjust = 0.5, vjust = 0.5),
+          aspect.ratio = 1,
           panel.background = element_blank(),
           axis.line = element_line(linewidth = 0.5))
 }
+
+plotSingleGenes("TGFB2")
 ```
 
 
